@@ -1,0 +1,69 @@
+---
+title: "Pilot Database Viewer"
+format:
+  html:
+    page-layout: full
+---
+
+This page provides a read-only view of the pilot database.
+Select a table from the dropdown menu below to view the data.
+
+```{=html}
+<style>
+figure { width: 100%; max-width: 100%; }
+figure > div { width: 100%; overflow-x: auto; }
+table { width: 100%; }
+</style>
+```
+
+{{< include _db-setup.qmd >}}
+
+```{ojs}
+//| panel: sidebar
+
+tables_query = db.query(
+  "SELECT name FROM sqlite_schema WHERE type='table' AND name NOT LIKE 'sqlite_%'"
+)
+table_names = tables_query.map(row => row.name)
+
+viewof selected_table = Inputs.select(table_names, {
+  label: "Select Table:",
+  value: table_names[0]
+})
+
+viewof pageSize = Inputs.select([10, 20, 50, 100], {
+  label: "Rows per page:",
+  value: 20
+})
+```
+
+```{ojs}
+//| panel: fill
+
+count_result = db.query(`SELECT COUNT(*) as total FROM "${selected_table}"`)
+total_rows   = count_result[0].total
+max_page     = Math.ceil(total_rows / pageSize)
+
+viewof currentPage = Inputs.range([1, max_page], {
+  label: "Page number:",
+  step: 1,
+  value: 1
+})
+
+md`**Page ${currentPage}** of ${max_page} &nbsp;*(Total rows: ${total_rows})*`
+
+offset     = (currentPage - 1) * pageSize
+data_paged = db.query(
+  `SELECT * FROM "${selected_table}" LIMIT ${pageSize} OFFSET ${offset}`
+)
+
+Inputs.table(data_paged, {
+  layout: "auto",
+  rows: pageSize,
+  format: {
+    year:       d3.format("d"),
+    start_year: d3.format("d"),
+    end_year:   d3.format("d")
+  }
+})
+```

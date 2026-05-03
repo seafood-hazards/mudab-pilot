@@ -1,0 +1,85 @@
+---
+title: "Data Export"
+subtitle: A dataset file exported from the pilot database
+---
+
+```{css, echo=FALSE}
+th {
+  white-space: nowrap;
+}
+```
+
+The data file was created for the initial analysis using the MUDAB data.
+
+## Data Availability
+
+A tab-delimited file containing all major data from the database is available for download at the following location.
+
+ * [pilot_ices_dome.tsv.gz](https://github.com/seafood-hazards/ices-dome-pilot/releases/download/v0.1.9/pilot_ices_dome.tsv.gz)
+
+## Data File Summary
+
+The file `pilot_ices_dome.tsv.gz` is a denormalized (flat) export of the relational database, designed to facilitate immediate analysis without requiring complex SQL joins.
+
+## Column Definition
+
+```{r}
+library(tibble)
+
+exported_columns_tbl <- tribble(
+  ~`Column Name`,            ~`Source Table`,     ~Type,     ~Description,
+  # Project metadata
+  "project_id",              "project",           "INTEGER", "Surrogate key linking to the project table.",
+  "project",                 "project",           "TEXT",    "Monitoring programme code(s), e.g. CEMP or CEMP~NATL.",
+  "country",                 "project",           "TEXT",    "Country name of the reporting institute.",
+
+  # Site metadata
+  "site_id",                 "site",              "INTEGER", "Surrogate key linking to the site table.",
+  "latitude",                "site",              "REAL",    "Latitude coordinate (decimal degrees).",
+  "longitude",               "site",              "REAL",    "Longitude coordinate (decimal degrees).",
+  "dist_to_coast",           "site",              "REAL",    "Distance from the station to the nearest coastline (km).",
+  "est_country",             "site",              "TEXT",    "Estimated country derived from station coordinates.",
+  "country_code",            "site",              "TEXT",    "ISO country code, e.g. NO, DK.",
+  "municipality",            "site",              "TEXT",    "Municipality name.",
+  "sea_name",                "site",              "TEXT",    "Name of the sea or coastal water body.",
+
+  # Parameter metadata
+  "param",                   "parameter",         "TEXT",    "ICES parameter code, e.g. HG, CD.",
+  "param_description",       "parameter",         "TEXT",    "Full name or description of the parameter.",
+
+  # Sample metadata
+  "year",                    "sample",            "INTEGER", "Year of sampling.",
+  "date",                    "sample",            "TEXT",    "Full sampling date (format DD/MM/YYYY).",
+  "sample_type",             "sample",            "TEXT",    "Sample type code, e.g. GC (grab/core).",
+  "sample_type_description", "sample",            "TEXT",    "Full description of the sample type.",
+
+  # Sediment depth / sub-sample index
+  "depth_from",              "sediment",          "REAL",    "Upper boundary of the sampled sediment layer (m).",
+  "depth_to",                "sediment",          "REAL",    "Lower boundary of the sampled sediment layer (m).",
+  "sediment_no",             "sediment",          "INTEGER", "Sequential sub-sample index within a sample–parameter combination.",
+
+  # Measurement
+  "value",                   "sediment",          "REAL",    "Measured concentration or numerical result.",
+  "unit",                    "sediment",          "TEXT",    "Unit of measurement, e.g. ug/kg or %.",
+  "basis",                   "sediment",          "TEXT",    "Basis of measurement code, e.g. D (dry weight).",
+  "qflag",                   "sediment",          "TEXT",    "Data quality flag code(s), e.g. < (below detection limit).",
+  "vflag",                   "sediment",          "TEXT",    "Validity flag code(s).",
+
+  # Detection limits & uncertainty
+  "lod",                     "lld",               "REAL",    "Limit of Detection (LOD) value.",
+  "loq",                     "lld",               "REAL",    "Limit of Quantification (LOQ) value.",
+  "uncrt",                   "sediment",          "REAL",    "Measurement uncertainty.",
+  "metcu",                   "sediment",          "TEXT",    "Method of measurement uncertainty.",
+
+  # Analysis method
+  "labo",                    "analysis_method",   "TEXT",    "Analysing laboratory code.",
+  "metst",                   "analysis_method",   "TEXT",    "Sample storage method code.",
+  "metpt",                   "analysis_method",   "TEXT",    "Pre-treatment method code.",
+  "metps",                   "analysis_method",   "TEXT",    "Sub-sampling method code.",
+  "metcx",                   "analysis_method",   "TEXT",    "Extraction / clean-up method code.",
+  "metoa",                   "analysis_method",   "TEXT",    "Analytical technique code, e.g. ICP-MS, AAS-GF."
+)
+
+exported_columns_tbl
+
+```

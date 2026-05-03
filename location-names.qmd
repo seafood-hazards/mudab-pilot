@@ -1,0 +1,46 @@
+---
+title: "Estimation of Location Names"
+subtitle: "Estimation of location names from geographic coordinates"
+---
+
+## Overview
+
+A common challenge in oceanographic datasets is missing or inconsistent location metadata. While sediment core data usually come with coordinates (latitude and longitude), fields such as the **Nearest Country** and the **Nearest Municipality** are often left blank or recorded inconsistently.
+
+To ensure consistency across the dataset, we algorithmically estimated these fields based on the core's location. This page outlines the data sources and geospatial methods used to populate the `country`, `municipality`, and `sea_name` columns in the [Site](db-schema.qmd#site-table) table.
+
+::: {.callout-note}
+### Note on Accuracy
+These values are **algorithmic estimates** based on geometric proximity. They may differ from historical logbooks or specific political definitions of maritime borders.
+:::
+
+## Nearest Country
+
+Since sediment cores are taken underwater, they do not technically belong "inside" a country's land border. To identify the associated nation, we used a **"Nearest Neighbor"** analysis.
+
+*   **Concept:** For every point in the ocean, we calculated the straight-line distance to the coastlines of all surrounding nations. The country with the shortest distance was assigned to the core.
+*   **Data Source:** We used the **Natural Earth** dataset (via the `rnaturalearth` R package). This provides a standardized, moderate-resolution map of global country boundaries suitable for identifying the nearest sovereign nation.
+
+## Nearest Municipality
+
+For higher-resolution analysis, identifying the country is not enough. We also estimated the **Nearest Municipality** (Local Administrative Unit) to provide granular context.
+
+*   **Concept:** Similar to the country estimation, this uses a "Nearest Neighbor" approach but requires much more detailed maps that include islands and complex coastal administrative borders.
+*   **Data Source:** We utilized the **Eurostat GISCO** database (via the `giscoR` R package). This provides official administrative boundaries for European countries down to the municipal level (LAU - Local Administrative Units).
+
+## Sea & Ocean Names
+
+To determine which body of water a core was taken from (e.g., "Barents Sea" vs. "Norwegian Sea"), we used the **"Point-in-Polygon"** method. 
+
+*   **Concept:** Imagine drawing official boundaries on a map. We simply check which boundary "box" each sediment core falls inside.
+*   **Data Source:** We utilized the **International Hydrographic Organization (IHO) Sea Areas v3**. This is the globally accepted standard for defining the limits of oceans and seas.
+*   **Method:** The specific boundaries were downloaded directly from the Marine Regions estimation service. If a core was located slightly "inland" due to map resolution issues (common in narrow fjords), it was assigned to the nearest adjacent sea body.
+
+
+## Summary of Data Sources
+
+| Field | Estimation Method | Data Source | R Package / Tool |
+| :--- | :--- | :--- | :--- |
+| **Nearest Country** | Nearest Neighbor | Natural Earth | `rnaturalearth` |
+| **Municipality** | Nearest Neighbor | Eurostat GISCO | `giscoR` |
+| **Sea Name** | Spatial Join | IHO Sea Areas v3 | `sf` (Direct WFS) |

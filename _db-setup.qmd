@@ -1,0 +1,11 @@
+```{ojs}
+//| output: false
+db = {
+  const StratumSQLite = await window._stratumSQLite;
+  return StratumSQLite.open(window._dbPath, {
+    sqlJsPath: window._sqljsBase,
+    cacheKey:  "pilot-ices-dome@v0.1.9",
+  });
+}
+
+```

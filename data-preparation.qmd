@@ -1,0 +1,51 @@
+---
+title: "Data Preparation"
+subtitle: "Cleaning the MUDAB Dataset"
+---
+
+```{css, echo=FALSE}
+th {
+  white-space: nowrap;
+}
+```
+
+This page outlines the data preparation steps required to standardise the MUDAB dataset.
+
+## 1. Data Filtering
+
+The original dataset was filtered by bounding box and parameter group to extract the data relevant to this study.
+
+### Bounding Box
+
+Sampling sites were restricted to European oceans and seas using the following bounding box.
+
+- **Latitude:** 35 to 85 degrees
+- **Longitude:** -30 to 30 degrees
+
+### Parameter Groups
+
+Only parameters belonging to the following four categories were used in this study.
+
+- **I-MET:** Metals and metalloids
+- **P-PHY:** Physical measurements
+- **I-MAJ:** Major inorganic constituents
+- **B-BIO:** Biological measurements
+
+## 2. Value Correction
+
+### Code Correction
+
+All codes were converted to uppercase, as both cases appeared interchangeably in the original dataset. In addition, the following codes were corrected as they were inconsistently used throughout the original dataset.
+
+```{r}
+library(tibble)
+
+sample_sediment_corrections <- tribble(
+  ~`Group`,      ~`Old Code`,   ~`New Code`,   ~`Name`,
+  "Institute",   "LNUG",        "LUNG",        "Landesamt für Umwelt, Naturschutz und Geologie in Mecklenburg-Vorpommern",
+  "Matrix",      "SEDTOT",      "SEDtot",      "Sediment - untreated total",
+  "DC Flag",     "21-CONVR-1",  "21-METPT-1",  "METPT (method of pretreatment) is added based on reported MATRX code",
+)
+
+sample_sediment_corrections
+```

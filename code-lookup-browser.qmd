@@ -1,0 +1,210 @@
+---
+title: "Code Lookup Browser"
+subtitle: "MUDAB vocabulary codes used in the database"
+format:
+  html:
+    page-layout: full
+---
+
+{{< include _db-setup.qmd >}}
+
+```{=html}
+<!-- DataTables CSS -->
+<link rel="stylesheet" href="https://cdn.datatables.net/2.0.8/css/dataTables.dataTables.min.css"/>
+<link rel="stylesheet" href="https://cdn.datatables.net/buttons/3.0.2/css/buttons.dataTables.min.css"/>
+
+<!-- Load jQuery and DataTables as plain script tags so DataTables
+     correctly attaches to the same jQuery global before OJS runs -->
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<script src="https://cdn.datatables.net/2.0.8/js/dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/3.0.2/js/dataTables.buttons.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/3.0.2/js/buttons.html5.min.js"></script>
+
+<style>
+/* Prevent multi-line table headers */
+th { white-space: nowrap; }
+
+/* Download button spacing */
+.dt-buttons { margin-bottom: 0.5rem; }
+
+/* Space before "entries per page" label */
+.dt-length label { gap: 6px; }
+.dt-length select { margin-right: 4px; }
+
+/* Remove Quarto cell wrapper margins inside the selector flex row
+   so the selector and button align to the same baseline */
+.selector-row > div { margin: 0 !important; padding: 0 !important; }
+</style>
+```
+
+```{ojs}
+//| output: false
+
+// --- Hardcoded code name → data_col mapping ---
+code_list = [
+  { label: "Monitoring programme code (MPROG)",                    value: "project"     },
+  { label: "Purpose code (PURPM)",                                  value: "purpose"     },
+  { label: "Reporting laboratory / institute code (RLABO)",         value: "institute"   },
+  { label: "Sample type code (SMTYP)",                              value: "sample_type" },
+  { label: "Parameter code (PARAM)",                                value: "param"       },
+  { label: "Parameter group code (Pargroup)",                       value: "group_code"  },
+  { label: "Analysing laboratory code (RLABO)",                     value: "labo"        },
+  { label: "Sample storage method code (METST)",                    value: "metst"       },
+  { label: "Pre-treatment method code (METPT)",                     value: "metpt"       },
+  { label: "Chemical fixation / preservation method code (METPS)",  value: "metps"       },
+  { label: "Chemical extraction method code (METCX)",               value: "metcx"       },
+  { label: "Analytical method code (METOA)",                        value: "metoa"       },
+  { label: "Reference code (REFSK)",                                value: "ref"         },
+  { label: "Matrix code (MATRX)",                                   value: "matrix"      },
+  { label: "Basis of measurement code (BASIS)",                     value: "basis"       },
+  { label: "Data quality flag code (QFLAG)",                        value: "qflag"       },
+  { label: "Validity flag code (VFLAG)",                            value: "vflag"       },
+  { label: "Uncertainty calculation method code (METCU)",           value: "metcu"       },
+  { label: "Data conversion flag code (DCFLG)",                     value: "dcflag"      }
+]
+```
+
+```{=html}
+<div class="selector-row" style="display:flex;align-items:flex-end;gap:12px;margin-bottom:0.5rem;">
+```
+
+```{ojs}
+// viewof correctly maintains visual state across reactive updates
+viewof selected_code = Inputs.select(code_list, {
+  label: "Code:",
+  format: d => d.label,
+  value: code_list[0],
+  width: 500
+})
+```
+
+```{ojs}
+// Download button — sits beside the selector via the flex wrapper above
+{
+  // Invisible spacer matches the height of the "Code:" label above the selector,
+  // so the button bottom aligns with the select box bottom
+  const spacer = html`<div style="font-size:13px;line-height:1.5;visibility:hidden;">&nbsp;</div>`
+
+  const btn = html`<button style="
+    padding: 5px 14px;
+    font-size: 13px;
+    cursor: pointer;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    background: #f8f8f8;
+    color: #000;
+  ">⬇ Download CSV</button>`
+
+  btn.onclick = () => {
+    const rows = [["Raw Code", "Code", "Description"]]
+    lookup_data.forEach(r =>
+      rows.push([r["Raw Code"], r["Code"], r["Description"] ?? ""])
+    )
+    const csv  = rows.map(r =>
+      r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(",")
+    ).join("\n")
+    const blob = new Blob([csv], { type: "text/csv" })
+    const a    = Object.assign(document.createElement("a"), {
+      href:     URL.createObjectURL(blob),
+      download: `code_lookup_${selected_code.value}.csv`
+    })
+    a.click()
+  }
+
+  const container = html`<div style="display:flex;flex-direction:column;"></div>`
+  container.append(spacer, btn)
+  return container
+}
+```
+
+```{=html}
+</div>
+```
+
+```{ojs}
+//| output: false
+
+// --- Query code_lookup for the selected data_col ---
+lookup_data = db.query(`
+  SELECT
+    raw_code     AS "Raw Code",
+    code         AS "Code",
+    description  AS "Description"
+  FROM code_lookup
+  WHERE data_col = '${selected_code.value}'
+  ORDER BY raw_code, code
+`)
+```
+
+```{ojs}
+{
+  // jQuery and DataTables are loaded via <script> tags in the HTML block above,
+  // so window.jQuery / window.$ are available here without require()
+  const jq = window.jQuery
+
+  const wrapper = html`<div></div>`
+  yield wrapper
+
+  // Destroy any previous DataTable instance to avoid re-init errors
+  const prevTable = wrapper.querySelector("table")
+  if (prevTable && jq.fn.DataTable.isDataTable(prevTable)) {
+    jq(prevTable).DataTable().destroy()
+  }
+
+  // Build table element
+  const table = html`
+    <table id="code-lookup-dt" class="display" style="width:100%">
+      <thead>
+        <tr>
+          <th>Raw Code</th>
+          <th>Code</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${lookup_data.map(row => html`
+          <tr>
+            <td>${row["Raw Code"]}</td>
+            <td>${row["Code"]}</td>
+            <td>${row["Description"] ?? ""}</td>
+          </tr>
+        `)}
+      </tbody>
+    </table>
+  `
+
+  wrapper.innerHTML = ""
+  wrapper.appendChild(table)
+
+  // Initialise DataTables with search, per-column filters, and CSV download
+  const dt = jq(table).DataTable({
+    pageLength: 20,
+    lengthMenu: [10, 20, 50, 100],
+    order: [[0, "asc"]],
+    // 'l' = length menu, 'f' = omitted (no global search), 'r' = processing,
+    // 't' = table, 'i' = info, 'p' = pagination
+    dom: 'lrtip',
+    buttons: [],
+    // Per-column filter row
+    initComplete() {
+      this.api().columns().every(function () {
+        const col    = this
+        const header = col.header()
+        const input  = document.createElement("input")
+        input.placeholder = `Filter ${header.textContent}…`
+        input.style.cssText = "width:100%;margin-top:4px;font-size:12px;padding:2px 4px;box-sizing:border-box;"
+        header.appendChild(document.createElement("br"))
+        header.appendChild(input)
+        input.addEventListener("input", () => {
+          col.search(input.value).draw()
+        })
+      })
+    }
+  })
+
+  // Clean up DataTable on cell invalidation (when selection changes)
+  invalidation.then(() => {
+    if (jq.fn.DataTable.isDataTable(table)) jq(table).DataTable().destroy()
+  })
+}
+```

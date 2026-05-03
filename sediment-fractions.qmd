@@ -1,0 +1,116 @@
+---
+title: "Grain Size Codes"
+subtitle: "Matrix and parameter codes used for grain size analysis"
+---
+
+{{< include _db-setup.qmd >}}
+
+```{=html}
+<link rel="stylesheet" href="https://cdn.datatables.net/2.0.8/css/dataTables.dataTables.min.css"/>
+
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<script src="https://cdn.datatables.net/2.0.8/js/dataTables.min.js"></script>
+
+<style>
+th { white-space: nowrap; }
+.dt-length select { margin-right: 4px; }
+</style>
+```
+
+```{ojs}
+//| output: false
+
+matrix_data = db.query(`
+  SELECT code        AS Matrix,
+         description AS Description
+  FROM code_lookup
+  WHERE code_type = 'MATRX'
+  ORDER BY CAST(replace(replace(code, 'SED', ''), 'tot', 10000) AS INTEGER)
+`)
+
+param_data = db.query(`
+  SELECT code        AS Parameter,
+         description AS Description
+  FROM code_lookup
+  WHERE code_type = 'PARAM'
+    AND lower(description) LIKE '%grain%'
+  ORDER BY description
+`)
+```
+
+The `Matrix` and `Parameter` codes below are used to identify grain size data in the dataset.
+
+## Matrix Codes
+
+Sediment matrix codes relevant to grain size analysis, ordered by sediment fraction size.
+
+```{ojs}
+{
+  const jq    = window.jQuery
+  const cols  = ["Matrix", "Description"]
+
+  const wrapper = html`<div style="width:100%"></div>`
+  yield wrapper
+
+  const table = html`
+    <table class="display" style="width:100%">
+      <thead><tr>${cols.map(c => html`<th>${c}</th>`)}</tr></thead>
+      <tbody>
+        ${matrix_data.map(r => html`
+          <tr>${cols.map(c => html`<td>${r[c] ?? ""}</td>`)}</tr>
+        `)}
+      </tbody>
+    </table>
+  `
+
+  wrapper.appendChild(table)
+
+  jq(table).DataTable({
+    paging:  false,
+    dom:     'rt',
+    order:   []
+  })
+
+  invalidation.then(() => {
+    if (jq.fn.DataTable.isDataTable(table)) jq(table).DataTable().destroy()
+  })
+}
+```
+
+## Parameter Codes
+
+Parameter codes whose descriptions contain the word "grain".
+
+```{ojs}
+{
+  const jq    = window.jQuery
+  const cols  = ["Parameter", "Description"]
+
+  const wrapper = html`<div style="width:100%"></div>`
+  yield wrapper
+
+  const table = html`
+    <table class="display" style="width:100%">
+      <thead><tr>${cols.map(c => html`<th>${c}</th>`)}</tr></thead>
+      <tbody>
+        ${param_data.map(r => html`
+          <tr>${cols.map(c => html`<td>${r[c] ?? ""}</td>`)}</tr>
+        `)}
+      </tbody>
+    </table>
+  `
+
+  wrapper.appendChild(table)
+
+  jq(table).DataTable({
+    pageLength:  25,
+    lengthMenu:  [10, 25, 50],
+    dom:         'lrtip',
+    order:       []
+  })
+
+  invalidation.then(() => {
+    if (jq.fn.DataTable.isDataTable(table)) jq(table).DataTable().destroy()
+  })
+}
+```

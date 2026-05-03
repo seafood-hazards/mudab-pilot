@@ -1,0 +1,37 @@
+---
+title: "MUDAB Pilot Database"
+subtitle: "A pilot study to evaluate the database structure using the MUDAB data"
+---
+
+This site presents the initial version of the database design and its potential applications using the publicly available [MUDAB](https://www.mudab.de/en) dataset.
+
+## Source Data
+
+-  [Marine Environmental Database (MUDAB)](https://www.mudab.de/en)
+
+## Database Design and Creation
+
+After creating the ER (Entity–Relationship) diagram, the tables were implemented in a single SQLite file containing 10 tables. All required data were extracted from the MUDAB export file and imported into the corresponding tables.
+
+- See the [DB Schema](./db-schema.qmd) page for details on the database architecture.
+
+## Geospatial Analysis
+
+To facilitate efficient core and sample selection, distances to the nearest coastline were calculated for the MUDAB data. In addition, the nearest country and municipality, as well as the sea and ocean names, were identified based on the core locations.
+
+- See the [Distance Calculation](./distance-to-coast.qmd) page for the methods and results of calculating the distance to the nearest coastline.
+- See the [Location Names](./location-names.qmd) page for the estimation of location names from geographic coordinates.
+- See the [Interactive Map](./distance-interactive-map.qmd) page for an interactive visualization of site locations with meta-information.
+
+## Data Export
+
+Data can be exported for both exploration and submission purposes.
+
+- See the [Export to Tabular File](./data-export.qmd) page for a description of a single tabular file format (`.tsv.gz`) that is extracted and merged from all database tables for data exploration.
+- See the [Sediment Particle Size Fractions](./sediment-fractions.qmd) page for a description of the conversion from raw grain-size measurements to standardised sediment particle fractions.
+
+## Tools
+
+- See the [Pilot DB Viewer](./pilot-db-viewer.qmd) page for a read-only view of the pilot database.
+- See the [Sediment Trace Element Map](./sediment-map.qmd) page for an interactive map view of the trace elements.
+- See the [Code Lookup Browser](./code-lookup-browser.qmd) page for ICES vocabulary codes used in the database.

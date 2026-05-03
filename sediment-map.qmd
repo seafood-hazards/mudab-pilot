@@ -1,0 +1,350 @@
+---
+title: "Sediment Trace Element Map"
+format:
+  html:
+    page-layout: full
+---
+
+```{=html}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<style>
+.map-container { height: 500px; width: 100%; }
+#map            { height: 100%; width: 100%; border-radius: 6px; }
+
+/* Legend */
+.legend {
+  background: white;
+  padding: 8px 12px;
+  border-radius: 5px;
+  box-shadow: 0 1px 5px rgba(0,0,0,0.3);
+  line-height: 1.6;
+  font-size: 13px;
+}
+.legend-title { font-weight: bold; margin-bottom: 4px; }
+.legend-bar {
+  width: 160px; height: 12px;
+  background: linear-gradient(to right, #ffffb2, #fecc5c, #fd8d3c, #f03b20, #bd0026);
+  border-radius: 2px;
+  margin: 4px 0;
+}
+.legend-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: #555;
+}
+
+/* Home button */
+.leaflet-home-button {
+  background: white;
+  border: 2px solid rgba(0,0,0,0.3);
+  border-radius: 4px;
+  width: 34px; height: 34px;
+  cursor: pointer;
+  font-size: 16px;
+  line-height: 30px;
+  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #444;
+  text-decoration: none;
+}
+.leaflet-home-button:hover { background: #f4f4f4; color: #000; }
+</style>
+```
+
+{{< include _db-setup.qmd >}}
+
+```{ojs}
+//| output: false
+
+L = require("https://unpkg.com/leaflet@1.9.4/dist/leaflet.js")
+
+home_lat  = 55
+home_lng  = 5
+home_zoom = 4
+
+elements = [
+  { label: "Cobalt (CO)",      value: "CO" },
+  { label: "Copper (CU)",      value: "CU" },
+  { label: "Iodine (I)",       value: "I"  },
+  { label: "Manganese (MN)",   value: "MN" },
+  { label: "Molybdenum (MO)",  value: "MO" },
+  { label: "Selenium (SE)",    value: "SE" },
+  { label: "Zinc (ZN)",        value: "ZN" }
+]
+```
+
+```{ojs}
+//| output: false
+mutable clicked_point = null
+```
+
+```{ojs}
+//| panel: sidebar
+
+viewof selected_element = Inputs.select(elements, {
+  label: "Element:",
+  format: d => d.label,
+  value: elements[0]
+})
+
+// --- Year range ---
+year_range_result = db.query(`
+  SELECT MIN(s3.year) AS min_year, MAX(s3.year) AS max_year
+  FROM sediment s
+  JOIN sample s3 ON s3.sample_id = s.sample_id
+  WHERE s.param = '${selected_element.value}'
+`)
+
+min_year = year_range_result[0].min_year ?? 1990
+max_year = year_range_result[0].max_year ?? 2024
+
+viewof year_start = Inputs.range(
+  [min_year, max_year],
+  { label: "Year from:", step: 1, value: min_year }
+)
+
+viewof year_end = Inputs.range(
+  [min_year, max_year],
+  { label: "Year to:", step: 1, value: max_year }
+)
+
+// --- Country list (updates when element changes) ---
+country_result = db.query(`
+  SELECT DISTINCT p.country
+  FROM sediment s
+  JOIN project p ON p.project_id = s.project_id
+  WHERE s.param = '${selected_element.value}'
+    AND p.country IS NOT NULL
+  ORDER BY p.country
+`)
+
+country_options = ["All", ...country_result.map(r => r.country)]
+
+viewof selected_country = Inputs.select(country_options, {
+  label: "Country:",
+  value: "All"
+})
+```
+
+```{ojs}
+//| panel: fill
+
+// Reusable country WHERE fragment — empty string when "All" is selected
+country_filter = selected_country === "All"
+  ? ""
+  : `AND p.country = '${selected_country}'`
+
+// --- Value range query (for legend and colour scale) ---
+value_range_result = db.query(`
+  SELECT
+    param,
+    MIN(avg_value) AS min_avg_value,
+    MAX(avg_value) AS max_avg_value
+  FROM (
+    SELECT
+      s.param,
+      AVG(
+        CASE
+          WHEN s.unit = 'mg/kg' THEN s.value * 1000
+          WHEN s.unit = 'ug/kg' THEN s.value
+          ELSE NULL
+        END
+      ) AS avg_value
+    FROM sediment s
+    JOIN site    s2 ON s2.site_id   = s.site_id
+    JOIN sample  s3 ON s3.sample_id = s.sample_id
+    JOIN project p  ON p.project_id = s.project_id
+    WHERE s.param = '${selected_element.value}'
+      AND s3.year BETWEEN ${year_start} AND ${year_end}
+      ${country_filter}
+    GROUP BY s.param, s2.latitude, s2.longitude
+  ) t
+  GROUP BY param
+`)
+
+value_min = value_range_result[0]?.min_avg_value ?? 0
+value_max = value_range_result[0]?.max_avg_value ?? 1
+
+// --- Map data query ---
+map_data = db.query(`
+  SELECT
+    s2.latitude,
+    s2.longitude,
+    AVG(
+      CASE
+        WHEN s.unit = 'mg/kg' THEN s.value * 1000
+        WHEN s.unit = 'ug/kg' THEN s.value
+        ELSE NULL
+      END
+    ) AS avg_value_ug_per_kg
+  FROM sediment s
+  JOIN site    s2 ON s2.site_id   = s.site_id
+  JOIN sample  s3 ON s3.sample_id = s.sample_id
+  JOIN project p  ON p.project_id = s.project_id
+  WHERE s.param = '${selected_element.value}'
+    AND s3.year >= ${year_start}
+    AND s3.year <= ${year_end}
+    AND s.value IS NOT NULL
+    ${country_filter}
+  GROUP BY s2.latitude, s2.longitude
+`)
+
+// --- Colour scale using element + year + country specific range ---
+colorScale = d3.scaleSequential()
+  .domain([value_min, value_max])
+  .interpolator(d3.interpolateYlOrRd)
+
+function markerColor(v) {
+  return v == null ? "#aaa" : colorScale(v)
+}
+
+function fmtVal(v) {
+  return v == null ? "N/A"
+    : v >= 1000  ? (v / 1000).toFixed(0) + " mg/kg"
+    : v.toFixed(0) + " µg/kg"
+}
+
+// --- Render / update map ---
+{
+  const container = html`<div class="map-container"><div id="map"></div></div>`
+  yield container
+
+  if (!container._map) {
+    const map = L.map(container.querySelector("#map"), { zoomControl: true })
+      .setView([home_lat, home_lng], home_zoom)
+
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      attribution: "© OpenStreetMap contributors"
+    }).addTo(map)
+
+    const HomeControl = L.Control.extend({
+      options: { position: "topleft" },
+      onAdd(map) {
+        const btn = L.DomUtil.create("a", "leaflet-home-button")
+        btn.innerHTML = '<i class="fa fa-expand" aria-hidden="true"></i>'
+        btn.title = "Reset to default view"
+        btn.setAttribute("aria-label", "Reset to default view")
+        L.DomEvent.on(btn, "click", (e) => {
+          L.DomEvent.stopPropagation(e)
+          map.setView([home_lat, home_lng], home_zoom)
+        })
+        return btn
+      }
+    })
+    new HomeControl().addTo(map)
+
+    const LegendControl = L.Control.extend({
+      options: { position: "bottomright" },
+      onAdd() {
+        const div = L.DomUtil.create("div", "legend")
+        div.id = "map-legend"
+        return div
+      }
+    })
+    new LegendControl().addTo(map)
+
+    container._map     = map
+    container._markers = L.layerGroup().addTo(map)
+  }
+
+  const { _map: map, _markers: markers } = container
+
+  // Update legend — includes country in subtitle when filtered
+  const legendEl = map.getContainer().querySelector("#map-legend")
+  if (legendEl) {
+    const countryLabel = selected_country === "All" ? "All countries" : selected_country
+    legendEl.innerHTML = `
+      <div class="legend-title">${selected_element.label}</div>
+      <div style="font-size:11px;color:#555">
+        Avg (µg/kg) · ${year_start}–${year_end} · ${countryLabel}
+      </div>
+      <div class="legend-bar"></div>
+      <div class="legend-labels">
+        <span>${fmtVal(value_min)}</span> &nbsp;
+        <span>${fmtVal((value_min + value_max) / 2)}</span> &nbsp;
+        <span>${fmtVal(value_max)}</span>
+      </div>
+    `
+  }
+
+  markers.clearLayers()
+  mutable clicked_point = null
+
+  for (const d of map_data) {
+    if (d.avg_value_ug_per_kg == null) continue
+    const circle = L.circleMarker([d.latitude, d.longitude], {
+      radius:      7,
+      fillColor:   markerColor(d.avg_value_ug_per_kg),
+      color:       "#333",
+      weight:      0.8,
+      opacity:     1,
+      fillOpacity: 0.85
+    })
+    circle.bindTooltip(
+      `<b>${selected_element.label}</b><br>
+       Avg: ${fmtVal(d.avg_value_ug_per_kg)}<br>
+       (${year_start}–${year_end})`,
+      { sticky: true }
+    )
+    circle.on("click", () => {
+      mutable clicked_point = { lon: d.longitude, lat: d.latitude }
+    })
+    markers.addLayer(circle)
+  }
+}
+
+map_data.length === 0
+  ? md`*No data found for this selection.*`
+  : md`**${selected_element.label}** · ${year_start}–${year_end} · ${selected_country} · **${map_data.length}** locations · values in µg/kg`
+```
+
+```{ojs}
+// --- Detail table on click ---
+
+point_data = {
+  const p = clicked_point
+  if (!p) return []
+  // In the detail query the project alias is p1, so adjust the country filter alias
+  const detail_country_filter = selected_country === "All"
+    ? ""
+    : `AND p1.country = '${selected_country}'`
+  return db.query(`
+    SELECT
+      p1.project                    AS Project,
+      s2.station                    AS Station,
+      ROUND(s2.latitude,  2)        AS Latitude,
+      ROUND(s2.longitude, 2)        AS Longitude,
+      CAST(s3.year AS TEXT)         AS Year,
+      s3.date                       AS Date,
+      s3.sample_type_description    AS Tool,
+      p2.param                      AS Param,
+      p2.param_description          AS Name,
+      s.sediment_no                 AS "No",
+      s.depth_from                  AS "From",
+      s.depth_to                    AS "To",
+      s.value                       AS Value,
+      s.unit                        AS Unit
+    FROM sediment s
+    JOIN project   p1 ON p1.project_id = s.project_id
+    JOIN site      s2 ON s2.site_id    = s.site_id
+    JOIN sample    s3 ON s3.sample_id  = s.sample_id
+    JOIN parameter p2 ON p2.param      = s.param
+    WHERE s.param  = '${selected_element.value}'
+      AND s3.year >= ${year_start}
+      AND s3.year <= ${year_end}
+      AND s2.longitude = ${p.lon}
+      AND s2.latitude  = ${p.lat}
+      ${detail_country_filter}
+    ORDER BY s3.year, s.sediment_no
+  `)
+}
+
+clicked_point
+  ? md`### Measurements at (${clicked_point.lat.toFixed(2)}, ${clicked_point.lon.toFixed(2)})`
+  : md`*Click a point on the map to see its measurements.*`
+
+clicked_point ? Inputs.table(point_data, { layout: "auto" }) : html`<span></span>`
+```
