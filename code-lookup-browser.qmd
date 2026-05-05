@@ -1,0 +1,184 @@
+---
+title: "Code Lookup Browser"
+subtitle: "MUDAB vocabulary codes used in the database"
+format:
+  html:
+    page-layout: full
+---
+
+{{< include _db-setup.qmd >}}
+
+```{=html}
+<!-- DataTables CSS -->
+<link rel="stylesheet" href="https://cdn.datatables.net/2.0.8/css/dataTables.dataTables.min.css"/>
+<link rel="stylesheet" href="https://cdn.datatables.net/buttons/3.0.2/css/buttons.dataTables.min.css"/>
+
+<!-- Load jQuery and DataTables as plain script tags so DataTables
+     correctly attaches to the same jQuery global before OJS runs -->
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<script src="https://cdn.datatables.net/2.0.8/js/dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/3.0.2/js/dataTables.buttons.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/3.0.2/js/buttons.html5.min.js"></script>
+
+<style>
+/* Prevent multi-line table headers */
+th { white-space: nowrap; }
+
+/* Space before "entries per page" label */
+.dt-length label { gap: 6px; }
+.dt-length select { margin-right: 4px; }
+
+/* Remove Quarto cell wrapper margins inside the selector flex row */
+.selector-row > div { margin: 0 !important; padding: 0 !important; }
+</style>
+```
+
+```{ojs}
+//| output: false
+
+code_list = [
+  { label: "Matrix code (ICESCL_MATRIX)",                   value: "ICESCL_MATRIX"        },
+  { label: "Uncertainty calculation method (ICESCL_METCU)", value: "ICESCL_METCU"          },
+  { label: "Chemical treatment code (ICESCL_METCX)",        value: "ICESCL_METCX"          },
+  { label: "Analytical method code (ICESCL_METOA)",         value: "ICESCL_METOA"          },
+  { label: "Physical treatment code (ICESCL_METPT)",        value: "ICESCL_METPT"          },
+  { label: "Unit code (ICESCL_MUNIT)",                      value: "ICESCL_MUNIT"          },
+  { label: "Parameter code (ICESCL_PARAM)",                 value: "ICESCL_PARAM"          },
+  { label: "Parameter group code (ICESCL_PARAMGROUP)",      value: "ICESCL_PARAMGROUP"     },
+  { label: "Data quality flag code (ICESCL_QFLAG)",         value: "ICESCL_QFLAG"          },
+  { label: "Laboratory / institute code (ICESCL_RLABO)",    value: "ICESCL_RLABO"          },
+  { label: "Vessel code (ICESCL_SHIPC)",                    value: "ICESCL_SHIPC"          },
+  { label: "Validity flag code (ICESCL_VFLAG)",             value: "ICESCL_VFLAG"          },
+  { label: "Institute code (MUDABCL_INSTITUTE)",            value: "MUDABCL_INSTITUTE"     },
+  { label: "Organisation code (MUDABCL_ORGANISATION)",      value: "MUDABCL_ORGANISATION"  },
+  { label: "Parameter CAS code (MUDABCL_PARAMCAS)",         value: "MUDABCL_PARAMCAS"      },
+  { label: "Platform type code (MUDABCL_PLATFORMTYPE)",     value: "MUDABCL_PLATFORMTYPE"  },
+  { label: "Station type code (MUDABCL_STATIONTYPE)",       value: "MUDABCL_STATIONTYPE"   }
+]
+```
+
+```{=html}
+<div class="selector-row" style="display:flex;align-items:flex-end;gap:12px;margin-bottom:0.5rem;">
+```
+
+```{ojs}
+viewof selected_code = Inputs.select(code_list, {
+  label: "Code:",
+  format: d => d.label,
+  value: code_list[0],
+  width: 500
+})
+```
+
+```{ojs}
+{
+  const spacer = html`<div style="font-size:13px;line-height:1.5;visibility:hidden;">&nbsp;</div>`
+
+  const btn = html`<button style="
+    padding: 5px 14px;
+    font-size: 13px;
+    cursor: pointer;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    background: #f8f8f8;
+    color: #000;
+  ">⬇ Download CSV</button>`
+
+  btn.onclick = () => {
+    const rows = [["Code", "Code Name"]]
+    lookup_data.forEach(r =>
+      rows.push([r["Code"], r["Code Name"] ?? ""])
+    )
+    const csv  = rows.map(r =>
+      r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(",")
+    ).join("\n")
+    const blob = new Blob([csv], { type: "text/csv" })
+    const a    = Object.assign(document.createElement("a"), {
+      href:     URL.createObjectURL(blob),
+      download: `code_lookup_${selected_code.value}.csv`
+    })
+    a.click()
+  }
+
+  const container = html`<div style="display:flex;flex-direction:column;"></div>`
+  container.append(spacer, btn)
+  return container
+}
+```
+
+```{=html}
+</div>
+```
+
+```{ojs}
+//| output: false
+
+// Query code_lookup for the selected category_code
+lookup_data = db.query(`
+  SELECT
+    code      AS "Code",
+    code_name AS "Code Name"
+  FROM code_lookup
+  WHERE category_code = '${selected_code.value}'
+  ORDER BY code
+`)
+```
+
+```{ojs}
+{
+  const jq = window.jQuery
+
+  const wrapper = html`<div></div>`
+  yield wrapper
+
+  const prevTable = wrapper.querySelector("table")
+  if (prevTable && jq.fn.DataTable.isDataTable(prevTable)) {
+    jq(prevTable).DataTable().destroy()
+  }
+
+  const table = html`
+    <table class="display" style="width:100%">
+      <thead>
+        <tr>
+          <th>Code</th>
+          <th>Code Name</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${lookup_data.map(row => html`
+          <tr>
+            <td>${row["Code"]}</td>
+            <td>${row["Code Name"] ?? ""}</td>
+          </tr>
+        `)}
+      </tbody>
+    </table>
+  `
+
+  wrapper.innerHTML = ""
+  wrapper.appendChild(table)
+
+  jq(table).DataTable({
+    pageLength: 20,
+    lengthMenu: [10, 20, 50, 100],
+    order:      [[0, "asc"]],
+    dom:        'lrtip',
+    initComplete() {
+      this.api().columns().every(function () {
+        const col    = this
+        const header = col.header()
+        const input  = document.createElement("input")
+        input.placeholder = `Filter ${header.textContent}…`
+        input.style.cssText = "width:100%;margin-top:4px;font-size:12px;padding:2px 4px;box-sizing:border-box;"
+        header.appendChild(document.createElement("br"))
+        header.appendChild(input)
+        input.addEventListener("input", () => col.search(input.value).draw())
+      })
+    }
+  })
+
+  invalidation.then(() => {
+    if (jq.fn.DataTable.isDataTable(table)) jq(table).DataTable().destroy()
+  })
+}
+```

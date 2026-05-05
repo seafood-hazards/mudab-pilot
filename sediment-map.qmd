@@ -1,0 +1,348 @@
+---
+title: "Sediment Trace Element Map"
+format:
+  html:
+    page-layout: full
+---
+
+```{=html}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<style>
+.map-container { height: 500px; width: 100%; }
+#map            { height: 100%; width: 100%; border-radius: 6px; }
+
+/* Legend */
+.legend {
+  background: white;
+  padding: 8px 12px;
+  border-radius: 5px;
+  box-shadow: 0 1px 5px rgba(0,0,0,0.3);
+  line-height: 1.6;
+  font-size: 13px;
+}
+.legend-title { font-weight: bold; margin-bottom: 4px; }
+.legend-bar {
+  width: 160px; height: 12px;
+  background: linear-gradient(to right, #ffffb2, #fecc5c, #fd8d3c, #f03b20, #bd0026);
+  border-radius: 2px;
+  margin: 4px 0;
+}
+.legend-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: #555;
+}
+
+/* Home button */
+.leaflet-home-button {
+  background: white;
+  border: 2px solid rgba(0,0,0,0.3);
+  border-radius: 4px;
+  width: 34px; height: 34px;
+  cursor: pointer;
+  font-size: 16px;
+  line-height: 30px;
+  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #444;
+  text-decoration: none;
+}
+.leaflet-home-button:hover { background: #f4f4f4; color: #000; }
+</style>
+```
+
+{{< include _db-setup.qmd >}}
+
+```{ojs}
+//| output: false
+
+L = require("https://unpkg.com/leaflet@1.9.4/dist/leaflet.js")
+
+home_lat  = 55
+home_lng  = 5
+home_zoom = 5
+
+elements = [
+  { label: "Cobalt (CO)",      value: "CO" },
+  { label: "Copper (CU)",      value: "CU" },
+  { label: "Manganese (MN)",   value: "MN" },
+  { label: "Molybdenum (MO)",  value: "MO" },
+  { label: "Selenium (SE)",    value: "SE" },
+  { label: "Zinc (ZN)",        value: "ZN" }
+]
+```
+
+```{ojs}
+//| output: false
+mutable clicked_point = null
+```
+
+```{ojs}
+//| panel: sidebar
+
+viewof selected_element = Inputs.select(elements, {
+  label: "Element:",
+  format: d => d.label,
+  value: elements[0]
+})
+
+// --- Year range ---
+year_range_result = db.query(`
+  SELECT MIN(m.year) AS min_year, MAX(m.year) AS max_year
+  FROM sediment s
+  JOIN measurement_time m ON m.measurement_time_id = s.measurement_time_id
+  WHERE s.parameter = '${selected_element.value}'
+`)
+
+min_year = year_range_result[0].min_year ?? 1984
+max_year = year_range_result[0].max_year ?? 2024
+
+viewof year_start = Inputs.range(
+  [min_year, max_year],
+  { label: "Year from:", step: 1, value: min_year }
+)
+
+viewof year_end = Inputs.range(
+  [min_year, max_year],
+  { label: "Year to:", step: 1, value: max_year }
+)
+
+// --- Organization list (updates when element changes) ---
+organisation_result = db.query(`
+  SELECT DISTINCT organisation
+  FROM sediment s
+  JOIN station s2 ON s2.station_no = s.station_no
+  WHERE s.parameter = '${selected_element.value}'
+  AND s2.organisation IS NOT NULL
+`)
+
+organisation_options = ["All", ...organisation_result.map(r => r.organisation)]
+
+viewof selected_organisation = Inputs.select(organisation_options, {
+  label: "Organisation:",
+  value: "All"
+})
+```
+
+```{ojs}
+//| panel: fill
+
+// Reusable organisation WHERE fragment — empty string when "All" is selected
+organisation_filter = selected_organisation === "All"
+  ? ""
+  : `AND s2.organisation = '${selected_organisation}'`
+
+// --- Value range query (for legend and colour scale) ---
+value_range_result = db.query(`
+  SELECT
+    param,
+    MIN(avg_value) AS min_avg_value,
+    MAX(avg_value) AS max_avg_value
+  FROM (
+      SELECT DISTINCT
+        s1.parameter AS param,
+          AVG(
+            CASE
+              WHEN s1.unit = 'mg/kg' THEN s1.measured_value * 1000
+              WHEN s1.unit = 'ug/kg' THEN s1.measured_value
+              ELSE NULL
+            END
+          ) AS avg_value
+      FROM sediment s1
+      JOIN station s2 ON s2.station_no = s1.station_no
+      JOIN survey s3 ON s3.survey_id = s1.survey_id
+      JOIN measurement_time m ON m.measurement_time_id  = s1.measurement_time_id
+      WHERE s1.parameter = '${selected_element.value}'
+       AND m.year BETWEEN ${year_start} AND ${year_end}
+           ${organisation_filter}
+        GROUP BY s1.parameter, s3.station_latitude, s3.station_longitude
+  ) t
+  GROUP BY t.param
+`)
+
+value_min = value_range_result[0]?.min_avg_value ?? 0
+value_max = value_range_result[0]?.max_avg_value ?? 1
+
+// --- Map data query ---
+map_data = db.query(`
+  SELECT
+    s3.station_latitude AS latitude,
+    s3.station_longitude AS longitude,
+    AVG(
+      CASE
+        WHEN s1.unit = 'mg/kg' THEN s1.measured_value * 1000
+        WHEN s1.unit = 'ug/kg' THEN s1.measured_value
+        ELSE NULL
+      END
+    ) AS avg_value_ug_per_kg
+  FROM sediment s1
+  JOIN station s2 ON s2.station_no = s1.station_no
+  JOIN survey s3 ON s3.survey_id = s1.survey_id
+  JOIN measurement_time m ON m.measurement_time_id  = s1.measurement_time_id
+  WHERE s1.parameter = '${selected_element.value}'
+    AND m.year >= ${year_start}
+    AND m.year <= ${year_end}
+    AND s1.measured_value IS NOT NULL
+    ${organisation_filter}
+  GROUP BY s3.station_latitude, s3.station_longitude
+`)
+
+// --- Colour scale using element + year + country specific range ---
+colorScale = d3.scaleSequential()
+  .domain([value_min, value_max])
+  .interpolator(d3.interpolateYlOrRd)
+
+function markerColor(v) {
+  return v == null ? "#aaa" : colorScale(v)
+}
+
+function fmtVal(v) {
+  return v == null ? "N/A"
+    : v >= 1000  ? (v / 1000).toFixed(0) + " mg/kg"
+    : v.toFixed(0) + " µg/kg"
+}
+
+// --- Render / update map ---
+{
+  const container = html`<div class="map-container"><div id="map"></div></div>`
+  yield container
+
+  if (!container._map) {
+    const map = L.map(container.querySelector("#map"), { zoomControl: true })
+      .setView([home_lat, home_lng], home_zoom)
+
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      attribution: "© OpenStreetMap contributors"
+    }).addTo(map)
+
+    const HomeControl = L.Control.extend({
+      options: { position: "topleft" },
+      onAdd(map) {
+        const btn = L.DomUtil.create("a", "leaflet-home-button")
+        btn.innerHTML = '<i class="fa fa-expand" aria-hidden="true"></i>'
+        btn.title = "Reset to default view"
+        btn.setAttribute("aria-label", "Reset to default view")
+        L.DomEvent.on(btn, "click", (e) => {
+          L.DomEvent.stopPropagation(e)
+          map.setView([home_lat, home_lng], home_zoom)
+        })
+        return btn
+      }
+    })
+    new HomeControl().addTo(map)
+
+    const LegendControl = L.Control.extend({
+      options: { position: "bottomright" },
+      onAdd() {
+        const div = L.DomUtil.create("div", "legend")
+        div.id = "map-legend"
+        return div
+      }
+    })
+    new LegendControl().addTo(map)
+
+    container._map     = map
+    container._markers = L.layerGroup().addTo(map)
+  }
+
+  const { _map: map, _markers: markers } = container
+
+  // Update legend — includes organisation in subtitle when filtered
+  const legendEl = map.getContainer().querySelector("#map-legend")
+  if (legendEl) {
+    const organisationLabel = selected_organisation === "All" ? "All organisations" : selected_organisation
+    legendEl.innerHTML = `
+      <div class="legend-title">${selected_element.label}</div>
+      <div style="font-size:11px;color:#555">
+        Avg (µg/kg) · ${year_start}–${year_end} · ${organisationLabel}
+      </div>
+      <div class="legend-bar"></div>
+      <div class="legend-labels">
+        <span>${fmtVal(value_min)}</span> &nbsp;
+        <span>${fmtVal((value_min + value_max) / 2)}</span> &nbsp;
+        <span>${fmtVal(value_max)}</span>
+      </div>
+    `
+  }
+
+  markers.clearLayers()
+  mutable clicked_point = null
+
+  for (const d of map_data) {
+    if (d.avg_value_ug_per_kg == null) continue
+    const circle = L.circleMarker([d.latitude, d.longitude], {
+      radius:      7,
+      fillColor:   markerColor(d.avg_value_ug_per_kg),
+      color:       "#333",
+      weight:      0.8,
+      opacity:     1,
+      fillOpacity: 0.85
+    })
+    circle.bindTooltip(
+      `<b>${selected_element.label}</b><br>
+       Avg: ${fmtVal(d.avg_value_ug_per_kg)}<br>
+       (${year_start}–${year_end})`,
+      { sticky: true }
+    )
+    circle.on("click", () => {
+      mutable clicked_point = { lon: d.longitude, lat: d.latitude }
+    })
+    markers.addLayer(circle)
+  }
+}
+
+map_data.length === 0
+  ? md`*No data found for this selection.*`
+  : md`**${selected_element.label}** · ${year_start}–${year_end} · ${selected_organisation} · **${map_data.length}** locations · values in µg/kg`
+```
+
+```{ojs}
+// --- Detail table on click ---
+
+point_data = {
+  const p = clicked_point
+  if (!p) return []
+  // In the detail query the project station is s2, so adjust the organisation filter alias
+  const detail_organisation_filter = selected_organisation === "All"
+    ? ""
+    : `AND s2.organisation = '${selected_organisation}'`
+  return db.query(`
+      SELECT
+        s2.organisation AS Organisation,
+        s2.project_affiliation AS Project,
+        s3.station_latitude AS Latitude,
+        s3.station_longitude AS Longitude,
+        CAST(CAST(m.year AS INTEGER) AS TEXT) AS Year,
+        s1.parameter AS Param,
+        UPPER(SUBSTR(p.parameter_name, 1, 1)) || LOWER(SUBSTR(p.parameter_name, 2)) AS Name
+        s1.sediment_no AS "No",
+        s4.layer_upper_boundary AS "From",
+        s4.layer_lower_boundary AS "To",
+        s1.measured_value AS Value,
+        s1.unit AS Unit
+      FROM sediment s1
+      JOIN station s2 ON s2.station_no = s1.station_no
+      JOIN survey s3 ON s3.survey_id = s1.survey_id
+      JOIN measurement_time m ON m.measurement_time_id  = s1.measurement_time_id
+      JOIN parameter p ON p.parameter  = s1.parameter
+      JOIN sample s4 ON s4.sample_no  = s1.sample_no
+      WHERE s1.parameter = '${selected_element.value}'
+        AND m.year >= ${year_start}
+        AND m.year <= ${year_end}
+        AND s3.station_longitude = ${p.lon}
+        AND s3.station_latitude  = ${p.lat}
+        AND s1.measured_value IS NOT NULL
+        ${detail_organisation_filter}
+      ORDER BY m.year, s1.sediment_no
+  `)
+}
+
+clicked_point
+  ? md`### Measurements at (${clicked_point.lat.toFixed(2)}, ${clicked_point.lon.toFixed(2)})`
+  : md`*Click a point on the map to see its measurements.*`
+
+clicked_point ? Inputs.table(point_data, { layout: "auto" }) : html`<span></span>`
+```

@@ -1,0 +1,17 @@
+/.project
+.Rproj.user
+
+/.quarto/
+**/*.quarto_ipynb
+/_site/
+/.Rhistory
+/.Rprofile
+
+/.idea
+
+*.sqlite
+/pilot_ices_dome.tsv.gz
+/libs/
+
+
+.positai

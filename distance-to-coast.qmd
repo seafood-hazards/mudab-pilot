@@ -1,0 +1,132 @@
+---
+title: "Distance Calculation"
+subtitle: Distance calculation to the nearest coastline from core locations
+---
+
+As the initial data analysis will be performed on the MUDAB sites located within European coastlines, the distances to the nearest coastline were calculated.
+
+The distance data is available in the `dist_to_coast` column of the [survey](db-schema.qmd#survey) table.
+
+## Methods
+
+Coastline data were derived from the **Global Self-consistent, Hierarchical, High-resolution Geography** ([GSHHG](https://www.soest.hawaii.edu/pwessel/gshhg/)) database. High-resolution shoreline polygons were extracted for the region covering European countries. The coastline geometry was cleaned and filtered to ensure topological validity before calculation.
+
+To ensure accurate measurements at high latitudes, where standard global projections (like Mercator) distort distances, all spatial data were projected to the **ETRS89-extended Lambert Azimuthal Equal Area projection (EPSG:3035)**. This Coordinate Reference System is the standard for pan-European statistical mapping and minimizes distortion across the region. The shortest Euclidean distance from each sampling site to the nearest European coastline geometry was then calculated in meters.
+
+The calculation was performed using the [sf](https://cran.r-project.org/web/packages/sf/index.html) library in R.
+
+## Sediment Site Locations with Distances to Coast
+
+{{< include _db-setup.qmd >}}
+
+```{ojs}
+//| output: false
+
+// --- Query site locations ---
+df_loc = db.query(`
+  SELECT DISTINCT
+     s3.survey_id,
+     s3.station_latitude AS latitude,
+     s3.station_longitude AS longitude,
+     CASE
+       WHEN s3.dist_to_coast <= 10  THEN '0 to 10km'
+       WHEN s3.dist_to_coast <= 30  THEN '10 to 30km'
+       WHEN s3.dist_to_coast <= 100 THEN '30 to 100km'
+       ELSE '≥100km'
+     END AS distance
+  FROM sediment s1
+  JOIN station s2 ON s2.station_no = s1.station_no
+  JOIN survey s3 ON s3.survey_id = s1.survey_id
+`)
+
+// --- World boundaries (Natural Earth via CDN) ---
+world_topo = fetch("https://cdn.jsdelivr.net/npm/world-atlas@2/countries-50m.json")
+  .then(r => r.json())
+
+world_geojson = topojson.feature(world_topo, world_topo.objects.countries)
+
+dist_counts = db.query(`
+  SELECT distance AS Distance,
+         COUNT(*) AS '# Sampling Sites'
+  FROM (
+      SELECT DISTINCT
+         s3.survey_id,
+         s3.station_latitude AS latitude,
+         s3.station_longitude AS longitude,
+         CASE
+           WHEN s3.dist_to_coast <= 10  THEN '0 to 10km'
+           WHEN s3.dist_to_coast <= 30  THEN '10 to 30km'
+           WHEN s3.dist_to_coast <= 100 THEN '30 to 100km'
+           ELSE '≥100km'
+         END AS distance
+      FROM sediment s1
+      JOIN station s2 ON s2.station_no = s1.station_no
+      JOIN survey s3 ON s3.survey_id = s1.survey_id
+  ) t
+  GROUP BY distance
+`)
+
+```
+
+```{ojs}
+Plot.plot({
+  width: 620,
+  height: 540,
+  marginRight: 120,
+  caption: "Sediment Cores — LAEA Europe Projection",
+  // Pan-European + Svalbard bounding box: 25°W–35°E, 33°N–82°N
+  projection: ({width, height}) => {
+    const lonMin = -21, lonMax = 41
+    const latMin =  45, latMax = 78
+    const mercY     = lat => Math.log(Math.tan(Math.PI / 4 + lat * Math.PI / 360))
+    const yTop      = mercY(latMax), yBot = mercY(latMin)
+    const yRange    = yTop - yBot
+    const xRange    = lonMax - lonMin   // degrees
+    // Fit the tighter of width/height to avoid overflow
+    const scaleH    = (height - 20) / yRange
+    const scaleW    = (width  - 20) / (xRange * Math.PI / 180)
+    const scale     = Math.min(scaleH, scaleW)
+    const yMid      = (yTop + yBot) / 2
+    const latCenter = (Math.atan(Math.exp(yMid)) - Math.PI / 4) * 360 / Math.PI
+    return d3.geoMercator()
+      .center([(lonMin + lonMax) / 2, latCenter])
+      .scale(scale)
+      .translate([width / 2, height / 2])
+  },
+  color: {
+    domain: ["0 to 10km", "10 to 30km", "30 to 100km", "≥100km"],
+    range:  ["#30123b",   "#28bbec",    "#a2fc3c",    "#fb8022"],
+    legend: true,
+    label:  "Distance to Coastline"
+  },
+  marks: [
+    // Ocean background clipped to the domain frame
+    Plot.frame({ fill: "#d0e8f5" }),
+    // Country polygons — clip: "frame" trims anything outside the domain bbox
+    Plot.geo(world_geojson, { fill: "#d4d4d4", stroke: "#888", strokeWidth: 0.4, clip: "frame" }),
+    // Graticule grid lines clipped to frame
+    Plot.graticule({ stroke: "gray", strokeWidth: 0.4, strokeDasharray: "3,3", clip: "frame" }),
+    // Frame border drawn on top
+    Plot.frame({ stroke: "#555", strokeWidth: 0.8 }),
+    // Site locations coloured by distance category
+    Plot.dot(df_loc, {
+      x: "longitude",
+      y: "latitude",
+      fill: "distance",
+      r: 3.5,
+      fillOpacity: 0.85,
+      stroke: "#222",
+      strokeWidth: 0.3,
+      clip: "frame"
+    })
+  ]
+})
+```
+
+```{ojs}
+Inputs.table(dist_counts, {
+  columns: ["Distance", "# Sampling Sites"],
+  layout: "fixed",
+  width: { "Distance": "50%", "# Sampling Sites": "50%" }
+})
+```

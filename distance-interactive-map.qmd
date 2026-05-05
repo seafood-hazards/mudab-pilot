@@ -1,0 +1,232 @@
+---
+title: "Interactive Map of Site Locations"
+subtitle: Interactive map to view sediment site locations with meta information
+---
+
+::: {.callout-note}
+## Note on Distance Accuracy
+
+Calculated distances represent the shortest Euclidean path to the nearest coastline geometry (GSHHG dataset).
+
+While the data is projected (EPSG:3035) to minimize distortion at high latitudes, please interpret these values as **estimates**. In areas with complex topography—such as narrow fjords or dense archipelagos—the resolution of the coastline vector data may result in minor deviations from real-world measurements.
+:::
+
+::: {.callout-note}
+### Note on Location Name Accuracy
+Location names from geographic coordinates are **algorithmic estimates** based on geometric proximity. They may differ from historical logbooks or specific political definitions of maritime borders.
+:::
+
+## Interactive Map
+
+The map below displays the spatial distribution of sediment cores. The markers are color-coded based on their distance from the nearest European coastline.
+
+**How to use this map:**
+
+*   **Zoom and Pan** to explore specific coastal areas or offshore regions.
+*   **Click the Expand icon <i class="fas fa-expand"></i>** to reset the view.
+*   **Filter** the data by toggling distance categories in the top-right menu (e.g., uncheck boxes to hide specific ranges).
+*   Use the **Legend** in the bottom right to interpret the color coding.
+*   **Hover** over a point to quickly identify the **survey** ID.
+*   **Click** on a marker to view exact coordinates, distance to shore (in km), and location names.
+
+```{=html}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<style>
+#site-map { height: 600px; width: 100%; border-radius: 6px; }
+
+/* Layer control */
+.leaflet-control-layers-list { font-size: 13px; }
+
+/* Legend */
+.site-legend {
+  background: white;
+  padding: 8px 12px;
+  border-radius: 5px;
+  box-shadow: 0 1px 5px rgba(0,0,0,0.3);
+  font-size: 13px;
+  line-height: 1.8;
+}
+.site-legend-title { font-weight: bold; margin-bottom: 4px; }
+.legend-dot {
+  display: inline-block;
+  width: 12px; height: 12px;
+  border-radius: 50%;
+  margin-right: 6px;
+  vertical-align: middle;
+  border: 1px solid rgba(0,0,0,0.25);
+}
+
+/* Home / reset button */
+.leaflet-home-button {
+  background: white;
+  border: 2px solid rgba(0,0,0,0.3);
+  border-radius: 4px;
+  width: 34px; height: 34px;
+  cursor: pointer;
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #444;
+  text-decoration: none;
+}
+.leaflet-home-button:hover { background: #f4f4f4; color: #000; }
+</style>
+```
+
+{{< include _db-setup.qmd >}}
+
+```{ojs}
+//| output: false
+
+// --- Load Leaflet JS ---
+L = require("https://unpkg.com/leaflet@1.9.4/dist/leaflet.js")
+
+// --- Default view ---
+home_lat  = 55
+home_lng  = 5
+home_zoom = 5
+
+// --- Distance category order and colours (turbo-like palette) ---
+dist_order  = ["0 to 10km", "10 to 30km", "30 to 100km", "≥100km"]
+dist_colors = ({
+  "0 to 10km":   "#30123b",
+  "10 to 30km":  "#28bbec",
+  "30 to 100km": "#a2fc3c",
+  "≥100km":      "#fb8022"
+})
+```
+
+```{ojs}
+//| output: false
+
+// --- Query site points ---
+points_web = db.query(`
+  SELECT DISTINCT
+    s2.organisation,
+    s2.project_affiliation,
+    s2.responsible_institute,
+    s2.region,
+    s3.survey_id,
+    s3.station_latitude AS latitude,
+    s3.station_longitude AS longitude,
+    s3.dist_to_coast,
+    s3.est_country,
+    s3.country_code,
+    s3.municipality,
+    s3.sea_name,
+    CASE
+      WHEN s3.dist_to_coast <= 10  THEN '0 to 10km'
+      WHEN s3.dist_to_coast <= 30  THEN '10 to 30km'
+      WHEN s3.dist_to_coast <= 100 THEN '30 to 100km'
+      ELSE '≥100km'
+    END AS Distance
+  FROM sediment s1
+  JOIN station s2 ON s2.station_no = s1.station_no
+  JOIN survey s3 ON s3.survey_id = s1.survey_id
+`)
+```
+
+```{ojs}
+//| column: page
+
+{
+  // --- Map container ---
+  const container = html`<div id="site-map"></div>`
+  yield container
+
+  if (!container._map) {
+    // Initialise map
+    const map = L.map(container, { zoomControl: true })
+      .setView([home_lat, home_lng], home_zoom)
+
+    L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", {
+      attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors © <a href="https://carto.com/">CARTO</a>',
+      maxZoom: 19
+    }).addTo(map)
+
+    // --- Home / reset button ---
+    const HomeControl = L.Control.extend({
+      options: { position: "topleft" },
+      onAdd(map) {
+        const btn = L.DomUtil.create("a", "leaflet-home-button")
+        btn.innerHTML = '<i class="fa fa-expand" aria-hidden="true"></i>'
+        btn.title = "Reset to default view"
+        btn.setAttribute("aria-label", "Reset to default view")
+        L.DomEvent.on(btn, "click", (e) => {
+          L.DomEvent.stopPropagation(e)
+          map.setView([home_lat, home_lng], home_zoom)
+        })
+        return btn
+      }
+    })
+    new HomeControl().addTo(map)
+
+    // --- Layer groups (one per distance category) ---
+    const layerGroups = {}
+    for (const cat of dist_order) {
+      layerGroups[cat] = L.layerGroup().addTo(map)
+    }
+
+    // --- Add markers ---
+    for (const d of points_web) {
+      if (d.latitude == null || d.longitude == null) continue
+      const color = dist_colors[d.Distance] ?? "#888"
+      const marker = L.circleMarker([d.latitude, d.longitude], {
+        radius:      4,
+        color:       color,
+        fillColor:   color,
+        fillOpacity: 0.5,
+        weight:      1
+      })
+
+      marker.bindTooltip(
+        `Survey ID: ${d.survey_id}`,
+        { sticky: true }
+      )
+
+      marker.bindPopup(`
+        <strong>Survey ID:</strong> ${d.survey_id}<br>
+        <strong>Organisation:</strong> ${d.organisation}<br>
+        <strong>Project Affiliation:</strong> ${d.project_affiliation}<br>
+        <strong>Responsible Institute:</strong> ${d.responsible_institute}<br>
+        <strong>Latitude:</strong> ${d.latitude != null ? d.latitude.toFixed(2) : "?"}<br>
+        <strong>Longitude:</strong> ${d.longitude != null ? d.longitude.toFixed(2) : "?"}<br>
+        <strong>Distance:</strong> ${d.dist_to_coast != null ? d.dist_to_coast.toFixed(1) + " km" : "?"}<br>
+        <strong>Country:</strong> ${d.est_country ?? "?"}<br>
+        <strong>Country Code:</strong> ${d.country_code ?? "?"}<br>
+        <strong>Municipality:</strong> ${d.municipality ?? "?"}<br>
+        <strong>Sea/Ocean Name:</strong>${d.sea_name ?? "?"}
+      `)
+
+      layerGroups[d.Distance]?.addLayer(marker)
+    }
+
+    // --- Layer control (top-right toggle) ---
+    // Reverse order so nearest distance is at top
+    const overlays = {}
+    for (const cat of [...dist_order].reverse()) {
+      overlays[cat] = layerGroups[cat]
+    }
+    L.control.layers(null, overlays, { collapsed: false }).addTo(map)
+
+    // --- Legend (bottom-right) ---
+    const LegendControl = L.Control.extend({
+      options: { position: "bottomright" },
+      onAdd() {
+        const div = L.DomUtil.create("div", "site-legend")
+        div.innerHTML = `<div class="site-legend-title">Distance to Coast</div>` +
+          dist_order.map(cat =>
+            `<div>
+              <span class="legend-dot" style="background:${dist_colors[cat]}"></span>${cat}
+            </div>`
+          ).join("")
+        return div
+      }
+    })
+    new LegendControl().addTo(map)
+
+    container._map = map
+  }
+}
+```
