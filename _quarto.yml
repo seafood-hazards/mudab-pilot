@@ -1,0 +1,62 @@
+project:
+  type: website
+  pre-render: download_resources.R
+  resources:
+    - pilot_mudab.sqlite
+    - libs/sqljs/
+  render:
+    - "*.qmd"
+    - "!CHANGELOG.md"
+
+website:
+  title: "MUDAB Pilot"
+  navbar:
+    search: true
+    right:
+      - icon: github
+        href: https://github.com/seafood-hazards/mudab-pilot
+        aria-label: GitHub
+    left:
+      - text: "Home"
+        href: index.qmd
+      - text: "DB Design"
+        menu:
+          - text: "DB Schema"
+            href: db-schema.qmd
+          - text: "Data Preparation"
+            href: data-preparation.qmd
+      - text: "Geospatial Analysis"
+        menu:
+          - text: "Distance to Coast"
+            href: distance-to-coast.qmd
+          - text: "Location Names"
+            href: location-names.qmd
+          - text: "Interactive Map"
+            href: distance-interactive-map.qmd
+      - text: "Data Export"
+        menu:
+          - text: "Export to Tabular File"
+            href: data-export.qmd
+      - text: "Tools"
+        menu:
+          - text: "Pilot DB Viewer"
+            href: pilot-db-viewer.qmd
+          - text: "Code Lookup Browser"
+            href: code-lookup-browser.qmd
+          - text: "Trace Element Map"
+            href: sediment-map.qmd
+
+format:
+  html:
+    include-in-header: header.html
+    theme:
+      - cosmo
+      - brand
+    css: styles.css
+    toc: true
+    df-print: kable
+
+execute:
+  echo: false
+  warning: false
+  message: false

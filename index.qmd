@@ -1,0 +1,94 @@
+---
+title: "MUDAB Pilot Database"
+subtitle: "A pilot study to evaluate the database structure using the MUDAB data"
+---
+
+This site presents the initial version of the database design and its potential applications using the publicly available [MUDAB](https://www.mudab.de/en) dataset.
+
+## Source Data
+
+-  [Marine Environmental Database (MUDAB)](https://www.mudab.de/en)
+
+### Count of Sediment Sites
+The table below summarizes the number of sediment sites collected across three organization between 1984 and 2024.
+
+{{< include _db-setup.qmd >}}
+
+```{ojs}
+//| output: false
+
+aq = require("arquero")
+
+// --- Query: long format counts per cruise type, year, and element ---
+counts_long = db.query(`
+    SELECT organisation,
+           year,
+           parameter_name,
+           COUNT(*) AS count
+    FROM (
+          SELECT DISTINCT
+            COALESCE(s2.organisation, 'Unknown') AS organisation,
+            CAST(CAST(m.year AS INTEGER) AS TEXT) AS year,
+            s1.station_no,
+            s1.survey_id,
+            s1.measurement_time_id,
+            s1.analysis_method_id,
+            s1.sample_no,
+            s1.lod_id,
+            s1.sediment_no,
+            s1.parameter,
+            UPPER(SUBSTR(p.parameter_name, 1, 1)) || LOWER(SUBSTR(p.parameter_name, 2)) AS parameter_name
+          FROM sediment s1
+          JOIN station s2 ON s2.station_no = s1.station_no
+          JOIN measurement_time m ON m.measurement_time_id  = s1.measurement_time_id
+          JOIN parameter p ON p.parameter  = s1.parameter
+          WHERE s1.parameter IN ('CO', 'CU', 'MN', 'MO', 'SE', 'ZN')
+            AND s1.measured_value IS NOT NULL
+    ) t
+    GROUP BY organisation, year, parameter_name
+`)
+
+// --- Pivot to wide format using Arquero ---
+elements_wide = ["Cobalt", "Copper", "Manganese", "Molybdenum", "Selenium", "Zinc"]
+
+counts_wide = aq.from(counts_long)
+  .groupby("organisation", "year")
+  .pivot("parameter_name", "count")
+  .orderby("organisation", "year")
+  .rename({ organisation: "Organisation", year: "Year" })
+  .objects()
+```
+
+```{ojs}
+Inputs.table(counts_wide, {
+  columns: ["Organisation", "Year", ...elements_wide],
+  layout: "auto",
+  rows: 20
+})
+```
+
+## Database Design and Creation
+
+After creating the ER (Entity–Relationship) diagram, the tables were implemented in a single SQLite file containing 10 tables. All required data were extracted from the MUDAB export file and imported into the corresponding tables.
+
+- See the [DB Schema](./db-schema.qmd) page for details on the database architecture.
+
+## Geospatial Analysis
+
+To facilitate efficient core and sample selection, distances to the nearest coastline were calculated for the MUDAB data. In addition, the nearest country and municipality, as well as the sea and ocean names, were identified based on the core locations.
+
+- See the [Distance Calculation](./distance-to-coast.qmd) page for the methods and results of calculating the distance to the nearest coastline.
+- See the [Location Names](./location-names.qmd) page for the estimation of location names from geographic coordinates.
+- See the [Interactive Map](./distance-interactive-map.qmd) page for an interactive visualization of site locations with meta-information.
+
+## Data Export
+
+Data can be exported for both exploration and submission purposes.
+
+- See the [Export to Tabular File](./data-export.qmd) page for a description of a single tabular file format (`.tsv.gz`) that is extracted and merged from all database tables for data exploration.
+
+## Tools
+
+- See the [Pilot DB Viewer](./pilot-db-viewer.qmd) page for a read-only view of the pilot database.
+- See the [Code Lookup Browser](./code-lookup-browser.qmd) page for ICES vocabulary codes used in the database.
+- See the [Sediment Trace Element Map](./sediment-map.qmd) page for an interactive map view of the trace elements.
