@@ -41,26 +41,26 @@ th { white-space: nowrap; }
 //| output: false
 
 // --- Hardcoded code name → data_col mapping ---
+//| output: false
+
 code_list = [
-  { label: "Monitoring programme code (MPROG)",                    value: "project"     },
-  { label: "Purpose code (PURPM)",                                  value: "purpose"     },
-  { label: "Reporting laboratory / institute code (RLABO)",         value: "institute"   },
-  { label: "Sample type code (SMTYP)",                              value: "sample_type" },
-  { label: "Parameter code (PARAM)",                                value: "param"       },
-  { label: "Parameter group code (Pargroup)",                       value: "group_code"  },
-  { label: "Analysing laboratory code (RLABO)",                     value: "labo"        },
-  { label: "Sample storage method code (METST)",                    value: "metst"       },
-  { label: "Pre-treatment method code (METPT)",                     value: "metpt"       },
-  { label: "Chemical fixation / preservation method code (METPS)",  value: "metps"       },
-  { label: "Chemical extraction method code (METCX)",               value: "metcx"       },
-  { label: "Analytical method code (METOA)",                        value: "metoa"       },
-  { label: "Reference code (REFSK)",                                value: "ref"         },
-  { label: "Matrix code (MATRX)",                                   value: "matrix"      },
-  { label: "Basis of measurement code (BASIS)",                     value: "basis"       },
-  { label: "Data quality flag code (QFLAG)",                        value: "qflag"       },
-  { label: "Validity flag code (VFLAG)",                            value: "vflag"       },
-  { label: "Uncertainty calculation method code (METCU)",           value: "metcu"       },
-  { label: "Data conversion flag code (DCFLG)",                     value: "dcflag"      }
+  { label: "Matrix code (ICESCL_MATRIX)",                value: "ICESCL_MATRIX"       },
+  { label: "Uncertainty calculation method (ICESCL_METCU)", value: "ICESCL_METCU"     },
+  { label: "Chemical treatment code (ICESCL_METCX)",     value: "ICESCL_METCX"        },
+  { label: "Analytical method code (ICESCL_METOA)",      value: "ICESCL_METOA"        },
+  { label: "Physical treatment code (ICESCL_METPT)",     value: "ICESCL_METPT"        },
+  { label: "Unit code (ICESCL_MUNIT)",                   value: "ICESCL_MUNIT"        },
+  { label: "Parameter code (ICESCL_PARAM)",              value: "ICESCL_PARAM"        },
+  { label: "Parameter group code (ICESCL_PARAMGROUP)",   value: "ICESCL_PARAMGROUP"   },
+  { label: "Data quality flag code (ICESCL_QFLAG)",      value: "ICESCL_QFLAG"        },
+  { label: "Laboratory / institute code (ICESCL_RLABO)", value: "ICESCL_RLABO"        },
+  { label: "Vessel code (ICESCL_SHIPC)",                 value: "ICESCL_SHIPC"        },
+  { label: "Validity flag code (ICESCL_VFLAG)",          value: "ICESCL_VFLAG"        },
+  { label: "Institute code (MUDABCL_INSTITUTE)",         value: "MUDABCL_INSTITUTE"   },
+  { label: "Organisation code (MUDABCL_ORGANISATION)",   value: "MUDABCL_ORGANISATION"},
+  { label: "Parameter CAS code (MUDABCL_PARAMCAS)",      value: "MUDABCL_PARAMCAS"    },
+  { label: "Platform type code (MUDABCL_PLATFORMTYPE)",  value: "MUDABCL_PLATFORMTYPE"},
+  { label: "Station type code (MUDABCL_STATIONTYPE)",    value: "MUDABCL_STATIONTYPE" }
 ]
 ```
 

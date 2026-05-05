@@ -18,205 +18,344 @@ The columns with `PK` in the diagram indicate primary keys of the table, which g
 
 ![](./image/mudab_db.webp){.zoomable}
 
-## Project Table
+## code_lookup
 
-The `project` table captures the unique combinations of monitoring programme,
-purpose, country, and responsible institute that generated the data.
-
-### Table Columns
+Vocabulary reference table mapping category codes and individual codes to their human-readable names.
 
 ```{r}
 library(tibble)
 
-tribble(
-  ~Name,        ~`Data Type`, ~PK, ~FK, ~`NA Allowed`, ~Description, ~`Look Up`,
-  "project_id", "INTEGER",    "✓", "",  "",         "Primary Key. Auto-generated surrogate key.", "",
-  "project",    "TEXT",       "",  "",  "",         "Monitoring programme code(s), e.g. CEMP or CEMP~NATL.", "MPROG",
-  "purpose",    "TEXT",       "",  "",  "✓",          "Purpose code(s), e.g. T~S (Temporal trend and Spatial).", "PURPM",
-  "country",    "TEXT",       "",  "",  "✓",          "Country name of the responsible institute.", "",
-  "institute",  "TEXT",       "",  "",  "✓",          "Code for the reporting laboratory / institute (maps to RLABO in code_lookup).", "RLABO"
+tibble(
+  Name        = c("category_code", "code_type", "code", "code_name"),
+  `Data Type` = c("TEXT", "TEXT", "TEXT", "TEXT"),
+  PK          = c("✓", "", "✓", ""),
+  FK          = c("", "", "", ""),
+  `NA Allowed`= c(FALSE, TRUE, FALSE, TRUE),
+  Description = c(
+    "Primary Key. Category code identifying the vocabulary domain (e.g. ICESCL_MATRIX).",
+    "Human-readable name of the category.",
+    "Primary Key. Individual code value within the category.",
+    "Human-readable name or description of the individual code."
+  ),
+  `Look Up`   = c("", "", "", "")
 )
 ```
 
 ---
 
-## Site Table
+## station
 
-The `site` table holds the geographical location of each sampling station.
-
-### Table Columns
+Sampling station metadata including location, responsible institute, and classification.
 
 ```{r}
-tribble(
-  ~Name,           ~`Data Type`, ~PK, ~`NA Allowed`, ~Description,
-  "site_id",       "TEXT",       "✓", "",         "Primary Key. Auto-generated surrogate key.",
-  "station",       "TEXT",       "",  "",         "Station name.",
-  "latitude",      "REAL",       "",  "",         "Latitude coordinate (decimal degrees).",
-  "longitude",     "REAL",       "",  "",         "Longitude coordinate (decimal degrees).",
-  "dist_to_coast", "REAL",       "",  "✓",          "Distance to the coast.",
-  "country",       "TEXT",       "",  "✓",          "Country name.",
-  "country_code",  "TEXT",       "",  "✓",          "Country code (e.g., NO).",
-  "municipality",  "TEXT",       "",  "✓",          "Municipality name.",
-  "sea_name",      "TEXT",       "",  "✓",          "Name of the sea or coastal water body."
+tibble(
+  Name        = c("station_no", "station_name", "station_id",
+                  "responsible_institute", "region", "institute",
+                  "latitude", "longitude", "organisation",
+                  "project_affiliation", "station_type", "water_body_category"),
+  `Data Type` = c("INTEGER", "TEXT", "INTEGER",
+                  "TEXT", "TEXT", "TEXT",
+                  "REAL", "REAL", "TEXT",
+                  "TEXT", "TEXT", "TEXT"),
+  PK          = c("✓", "", "", "", "", "", "", "", "", "", "", ""),
+  FK          = c("", "", "", "", "", "", "", "", "", "", "", ""),
+  `NA Allowed`= c(FALSE, FALSE, FALSE,
+                  TRUE, TRUE, TRUE,
+                  TRUE, TRUE, TRUE,
+                  TRUE, TRUE, TRUE),
+  Description = c(
+    "Primary Key. Auto-generated surrogate key for the station.",
+    "Station identifier name or code.",
+    "Original station identifier from the source database.",
+    "Institute responsible for the station.",
+    "Sea region (e.g. North Sea, Baltic Sea).",
+    "Institute code for the measuring laboratory.",
+    "Latitude coordinate (decimal degrees).",
+    "Longitude coordinate (decimal degrees).",
+    "Organisation type (e.g. NATIONAL, OSPAR, HELCOM).",
+    "Monitoring programme affiliation (e.g. BLMP+).",
+    "Station type classification.",
+    "Water body category code."
+  ),
+  `Look Up`   = c("", "", "", "code_lookup (MUDABCL_INSTITUTE)", "", "code_lookup (MUDABCL_INSTITUTE)", "", "", "code_lookup (MUDABCL_ORGANISATION)", "", "code_lookup (MUDABCL_STATIONTYPE)", "code_lookup (ICESCL_MSTAT)")
 )
 ```
 
 ---
 
-## Sample Table
+## parameter
 
-The `sample` table records one physical sampling event, linking a project,
-site, and date together.
-
-### Table Columns
+Chemical or physical parameters measured in the sediment.
 
 ```{r}
-tribble(
-  ~Name,                     ~`Data Type`, ~PK, ~FK,                     ~`NA Allowed`, ~Description, ~`Look Up`,
-  "sample_id",               "INTEGER",    "✓", "",                      "",         "Primary Key. Auto-generated surrogate key.", "",
-  "project_id",              "INTEGER",    "",  "project (project_id)",  "",         "Foreign Key to the project table.", "",
-  "site_id",                 "INTEGER",    "",  "site (site_id)",       "",         "Foreign Key to the site table.", "",
-  "year",                    "INTEGER",    "",  "",                      "✓",          "Year of sampling.", "",
-  "date",                    "TEXT",       "",  "",                      "✓",          "Full date of sampling (text, format DD/MM/YYYY).", "",
-  "sample_type",             "TEXT",       "",  "",                      "✓",          "Sample type code, e.g. GC (grab/core) or DA (dab).", "SMTYP",
-  "sample_type_description", "TEXT",       "",  "",                      "✓",          "Sample type description.", "SMTYP"
+tibble(
+  Name        = c("parameter", "parameter_name", "parameter_group", "cas_number", "lawa_code"),
+  `Data Type` = c("TEXT", "TEXT", "TEXT", "TEXT", "REAL"),
+  PK          = c("✓", "", "", "", ""),
+  FK          = c("", "", "", "", ""),
+  `NA Allowed`= c(FALSE, TRUE, TRUE, TRUE, TRUE),
+  Description = c(
+    "Primary Key. ICES parameter code (e.g. HG, CD, ZN).",
+    "Full name of the parameter (e.g. mercury, cadmium).",
+    "Parameter group code (e.g. I-MET for metals and metalloids).",
+    "Chemical Abstracts Service registry number.",
+    "German LAWA parameter identifier code."
+  ),
+  `Look Up`   = c("code_lookup (ICESCL_PARAM)", "", "code_lookup (ICESCL_PARAMGROUP)", "", "")
 )
 ```
 
 ---
 
-## Code Lookup Table
+## measurement_time
 
-The `code_lookup` table is a common lookup resource that maps every coded field
-in the database to its human-readable description. It also handles multi-code
-values (e.g. `T~S`) by storing one row per individual component code.
-
-### Table Columns
+Date and time information for each measurement event.
 
 ```{r}
-tribble(
-  ~Name,         ~`Data Type`, ~PK, ~FK, ~`NA Allowed`, ~Description,
-  "data_col",    "TEXT",       "✓", "",  "",         "Primary Key. Column name in the database that contains this code (e.g. purpose, qflag).",
-  "code_type",   "TEXT",       "✓", "",  "",         "Primary Key. Code type / domain from the ICES vocabulary (e.g. PURPM, QFLAG).",
-  "raw_code",    "TEXT",       "✓", "",  "",         "Primary Key. The original raw value as it appears in the data (e.g. T~S).",
-  "code",        "TEXT",       "✓", "",  "",         "Primary Key. Individual split code derived from raw_code (e.g. T or S).",
-  "description", "TEXT",       "",  "",  "✓",          "Human-readable description of the individual code."
+tibble(
+  Name        = c("measurement_time_id", "year", "measurement_date", "measurement_time"),
+  `Data Type` = c("INTEGER", "REAL", "TEXT", "TEXT"),
+  PK          = c("✓", "", "", ""),
+  FK          = c("", "", "", ""),
+  `NA Allowed`= c(FALSE, TRUE, TRUE, TRUE),
+  Description = c(
+    "Primary Key. Auto-generated surrogate key.",
+    "Year of measurement.",
+    "Full date of measurement (ISO format: YYYY-MM-DD).",
+    "Time of measurement (HH:MM). Stored as text; 00:00 indicates time not recorded."
+  ),
+  `Look Up`   = c("", "", "", "")
 )
 ```
 
 ---
 
-## Parameter Table
+## analysis_method
 
-The `parameter` table defines each chemical or physical property that is
-measured, together with its parent parameter group.
-
-### Table Columns
+Laboratory analysis methods used for each measurement, including chemical and physical treatments.
 
 ```{r}
-tribble(
-  ~Name,               ~`Data Type`, ~PK, ~FK, ~`NA Allowed`, ~Description, ~`Look Up`,
-  "param",             "TEXT",       "✓", "",  "",         "Primary Key. ICES parameter code, e.g. HG, CD, GSMF2000.", "PARAM",
-  "param_description", "TEXT",       "",  "",  "✓",          "Full name or description of the parameter.", "PARAM",
-  "group_code",        "TEXT",       "",  "",  "✓",          "Parameter group code, e.g. I-MET, P-PHY.", "Pargroup",
-  "group_description", "TEXT",       "",  "",  "✓",          "Full name of the parameter group.", "Pargroup"
+tibble(
+  Name        = c("analysis_method_id", "measurement_method_code",
+                  "chemical_treatment", "physical_treatment",
+                  "measurement_basis", "accreditation",
+                  "analytical_laboratory", "control_chart_type",
+                  "discipline", "proficiency_testing"),
+  `Data Type` = c("INTEGER", "TEXT", "TEXT", "TEXT",
+                  "TEXT", "TEXT", "TEXT", "TEXT", "TEXT", "TEXT"),
+  PK          = c("✓", "", "", "", "", "", "", "", "", ""),
+  FK          = c("", "", "", "", "", "", "", "", "", ""),
+  `NA Allowed`= c(FALSE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE),
+  Description = c(
+    "Primary Key. Auto-generated surrogate key.",
+    "Analytical measurement method code (e.g. AAS-CV, ICP-OES).",
+    "Chemical treatment applied to the sample (e.g. HF-C, HNO).",
+    "Physical pre-treatment applied to the sample (e.g. DFRZ = freeze-drying).",
+    "Basis of measurement (e.g. D = dry weight).",
+    "Accreditation status of the analytical laboratory.",
+    "Code of the laboratory that performed the analysis.",
+    "Type of control chart used for internal quality assurance.",
+    "Measurement discipline (e.g. C = chemistry).",
+    "Reference to proficiency testing participation."
+  ),
+  `Look Up`   = c("", "code_lookup (ICESCL_METOA)", "code_lookup (ICESCL_METCX)",
+                  "code_lookup (ICESCL_METPT)", "code_lookup (ICESCL_BASIS)",
+                  "", "code_lookup (ICESCL_RLABO)", "", "", "")
 )
 ```
 
 ---
 
-## LLD Table
+## reference_material
 
-The `lld` table stores the Limit of Detection (LOD) and Limit of Quantification
-(LOQ) values associated with specific parameter measurements.
-
-### Table Columns
+Reference material used for quality assurance during chemical analysis.
 
 ```{r}
-tribble(
-  ~Name,    ~`Data Type`, ~PK, ~FK,                ~`NA Allowed`, ~Description,
-  "lld_id", "INTEGER",    "✓", "",                 "",         "Primary Key. Auto-generated surrogate key.",
-  "param",  "TEXT",       "",  "parameter (param)", "",         "Foreign Key to the parameter table.",
-  "lod",    "REAL",       "",  "",                 "✓",          "Limit of Detection value.",
-  "loq",    "REAL",       "",  "",                 "✓",          "Limit of Quantification value."
+tibble(
+  Name        = c("reference_material_id", "parameter",
+                  "reference_material_code", "reference_material_basis",
+                  "reference_material_type", "reference_material_sd",
+                  "reference_material_mean"),
+  `Data Type` = c("INTEGER", "TEXT", "TEXT", "TEXT", "TEXT", "REAL", "REAL"),
+  PK          = c("✓", "", "", "", "", "", ""),
+  FK          = c("", "parameter (parameter)", "", "", "", "", ""),
+  `NA Allowed`= c(FALSE, FALSE, TRUE, TRUE, TRUE, TRUE, TRUE),
+  Description = c(
+    "Primary Key. Auto-generated surrogate key.",
+    "Foreign Key. Parameter this reference material applies to.",
+    "Identifier code for the reference material.",
+    "Basis on which the reference material is characterised.",
+    "Type of reference material.",
+    "Certified standard deviation of the reference material.",
+    "Certified mean value of the reference material."
+  ),
+  `Look Up`   = c("", "", "", "", "", "", "")
 )
 ```
 
 ---
 
-## Analysis Method Table
+## survey
 
-The `analysis_method` table catalogues the combination of laboratory, storage,
-pre-treatment, extraction, clean-up, and analytical technique used for each
-parameter measurement.
-
-### Table Columns
+Survey and voyage metadata linking measurements to spatial and temporal context.
 
 ```{r}
-tribble(
-  ~Name,         ~`Data Type`, ~PK, ~FK,                ~`NA Allowed`, ~Description, ~`Look Up`,
-  "analysis_id", "INTEGER",    "✓", "",                 "",         "Primary Key. Auto-generated surrogate key.", "",
-  "param",       "TEXT",       "",  "parameter (param)", "✓",          "Foreign Key to the parameter table.", "",
-  "labo",        "TEXT",       "",  "",                 "✓",          "Analysing laboratory code.", "RLABO",
-  "metst",       "TEXT",       "",  "",                 "✓",          "Sample storage method code.", "METST",
-  "metpt",       "TEXT",       "",  "",                 "✓",          "Purification/separation method code.", "METPT",
-  "metps",       "TEXT",       "",  "",                 "✓",          "Chemical fixation/preservation method code.", "METPS",
-  "metcx",       "TEXT",       "",  "",                 "✓",          "Chemical extraction method code.", "METCX",
-  "metoa",       "TEXT",       "",  "",                 "✓",          "Analytical method code, e.g. ICP-MS, AAS-GF.", "METOA"
+tibble(
+  Name        = c("survey_id", "monitoring_station_name", "measurement_depth",
+                  "station_latitude", "station_longitude", "measurement_project",
+                  "survey_start", "survey_end", "vessel_code", "platform_type",
+                  "vessel_name", "dist_to_coast", "est_country", "country_code",
+                  "municipality", "sea_name"),
+  `Data Type` = c("INTEGER", "TEXT", "REAL", "REAL", "REAL", "TEXT",
+                  "REAL", "REAL", "TEXT", "TEXT", "TEXT", "REAL",
+                  "TEXT", "TEXT", "TEXT", "TEXT"),
+  PK          = c("✓", "", "", "", "", "", "", "", "", "", "", "", "", "", "", ""),
+  FK          = c("", "", "", "", "", "", "", "", "", "", "", "", "", "", "", ""),
+  `NA Allowed`= c(FALSE, TRUE, TRUE, TRUE, TRUE, TRUE,
+                  TRUE, TRUE, TRUE, TRUE, TRUE, TRUE,
+                  TRUE, TRUE, TRUE, TRUE),
+  Description = c(
+    "Primary Key. Auto-generated surrogate key.",
+    "Name or code of the monitoring station.",
+    "Depth of measurement (m).",
+    "Latitude of the monitoring station (decimal degrees).",
+    "Longitude of the monitoring station (decimal degrees).",
+    "Monitoring project name or code.",
+    "Survey start date (integer format YYYYMMDD).",
+    "Survey end date (integer format YYYYMMDD).",
+    "Vessel identifier code.",
+    "Type of sampling platform.",
+    "Name of the sampling vessel.",
+    "Distance from station to nearest coastline (km).",
+    "Estimated country derived from station coordinates.",
+    "ISO country code (e.g. DE).",
+    "Municipality name.",
+    "Name of the sea or ocean."
+  ),
+  `Look Up`   = c("", "", "", "", "", "", "", "",
+                  "code_lookup (ICESCL_SHIPC)", "code_lookup (MUDABCL_PLATFORMTYPE)",
+                  "", "", "", "", "", "")
 )
 ```
 
 ---
 
-## Reference Table
+## lod
 
-The `reference` table holds bibliographic or standard-method references cited
-for specific analyses.
-
-#### Table Columns
+Limits of detection and quantification per parameter measurement.
 
 ```{r}
-tribble(
-  ~Name,             ~`Data Type`, ~PK, ~FK, ~`NA Allowed`, ~Description, ~`Look Up`,
-  "ref_id",          "INTEGER",    "✓", "",  "",         "Primary Key. Auto-generated surrogate key.", "",
-  "ref",             "TEXT",       "",  "",  "",         "Short reference code, e.g. EPA 6020 or ISO11885:2007.", "REFSK",
-  "ref_description", "TEXT",       "",  "",  "✓",          "Full title or description of the reference document.", "REFSK"
+tibble(
+  Name        = c("lod_id", "parameter",
+                  "internal_qa_detection_limit",
+                  "internal_qa_quantification_limit",
+                  "expanded_uncertainty_pct",
+                  "uncertainty_method"),
+  `Data Type` = c("INTEGER", "TEXT", "REAL", "REAL", "REAL", "TEXT"),
+  PK          = c("✓", "", "", "", "", ""),
+  FK          = c("", "parameter (parameter)", "", "", "", ""),
+  `NA Allowed`= c(FALSE, FALSE, TRUE, TRUE, TRUE, TRUE),
+  Description = c(
+    "Primary Key. Auto-generated surrogate key.",
+    "Foreign Key. Parameter this limit applies to.",
+    "Internal quality assurance limit of detection value.",
+    "Internal quality assurance limit of quantification value.",
+    "Expanded measurement uncertainty expressed as a percentage.",
+    "Method used to determine the measurement uncertainty."
+  ),
+  `Look Up`   = c("", "", "", "", "", "code_lookup (ICESCL_METCU)")
 )
 ```
 
 ---
 
-## Sediment Table
+## sample
 
-The `sediment` table stores the actual measurement values. Each row represents
-one parameter measurement from one physical sub-sample (sediment layer) within
-a sampling event.
-
-#### Table Columns
+Physical sample metadata including sediment layer depth, matrix, and field observations.
 
 ```{r}
-tribble(
-  ~Name,         ~`Data Type`, ~PK, ~FK,                               ~`NA Allowed`, ~Description, ~`Look Up`,
-  "project_id",  "INTEGER",    "✓", "project (project_id)",            "",         "Primary Key. Foreign Key to the project table.", "",
-  "site_id",     "INTEGER",    "✓", "site (site_id)",               "",         "Primary Key. Foreign Key to the site table.", "",
-  "sample_id",   "INTEGER",    "✓", "sample (sample_id)",             "",         "Primary Key. Foreign Key to the sample table.", "",
-  "param",       "TEXT",       "✓", "parameter (param)",              "",         "Primary Key. Foreign Key to the parameter table.", "",
-  "sediment_no", "INTEGER",    "✓", "",                                "",         "Primary Key. Sequential sub-sample index within a sample–parameter combination.",  "",
-  "depth_from",  "REAL",       "",  "",                                "✓",          "Upper depth of the sediment layer (m).", "",
-  "depth_to",    "REAL",       "",  "",                                "✓",          "Lower depth of the sediment layer (m).", "",
-  "matrix",      "TEXT",       "",  "",                                "✓",          "Matrix being analyzed.", "MATRX",
-  "value",       "REAL",       "",  "",                                "✓",          "Measured concentration or numerical result.", "",
-  "unit",        "TEXT",       "",  "",                                "✓",          "Unit of measurement, e.g. ug/kg or %.", "",
-  "basis",       "TEXT",       "",  "",                                "✓",          "Basis of measurement code, e.g. D (dry weight).", "BASIS",
-  "qflag",       "TEXT",       "",  "",                                "✓",          "Data quality flag code (may be multi-value, e.g. <).", "QFLAG",
-  "vflag",       "TEXT",       "",  "",                                "✓",          "Validity flag code.", "VFLAG",
-  "uncrt",       "REAL",       "",  "",                                "✓",          "Measurement uncertainty.", "",
-  "metcu",       "TEXT",       "",  "",                                "✓",          "Method of calculating uncertainty.", "METCU",
-  "sub_no",      "TEXT",       "",  "",                                "✓",          "Sub-sample number within the physical core.", "",
-  "dcflag",      "TEXT",       "",  "",                                "✓",          "Data conversion flag code(s).", "DCFLG",
-  "lld_id",      "INTEGER",    "",  "lld (lld_id)",                    "✓",          "Foreign Key to the lld table.", "",
-  "analysis_id", "INTEGER",    "",  "analysis_method (analysis_id)",   "✓",          "Foreign Key to the analysis_method table.", "",
-  "ref_id",      "INTEGER",    "",  "reference (ref_id)",              "✓",          "Foreign Key to the reference table.", ""
+tibble(
+  Name        = c("sample_no", "sample_id",
+                  "layer_upper_boundary", "layer_lower_boundary",
+                  "sampling_method", "flag",
+                  "matrix", "sediment_composition",
+                  "sediment_content", "sampled_area"),
+  `Data Type` = c("INTEGER", "TEXT", "REAL", "REAL",
+                  "TEXT", "TEXT", "TEXT", "TEXT", "TEXT", "REAL"),
+  PK          = c("✓", "", "", "", "", "", "", "", "", ""),
+  FK          = c("", "", "", "", "", "", "", "", "", ""),
+  `NA Allowed`= c(FALSE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE),
+  Description = c(
+    "Primary Key. Auto-generated surrogate key.",
+    "Original sample identifier from the source database.",
+    "Upper depth boundary of the sampled sediment layer (cm).",
+    "Lower depth boundary of the sampled sediment layer (cm).",
+    "Method used to collect the sample (e.g. BC = box corer, VV = Van Veen grab).",
+    "Data quality flag.",
+    "Sediment matrix fraction code (e.g. SED20, SED63, SED2000).",
+    "Field description of the sediment composition (translated to English).",
+    "Field description of the sediment content (translated to English).",
+    "Area of the seafloor sampled (cm²). -9999 indicates not recorded."
+  ),
+  `Look Up`   = c("", "", "", "", "", "code_lookup (ICESCL_VFLAG)",
+                  "code_lookup (ICESCL_MATRIX)", "", "", "")
+)
+```
+
+---
+
+## sediment
+
+Measurement table storing the actual analytical results. Each row represents one parameter value from one sample at one station, linked to all relevant metadata tables via foreign keys.
+
+```{r}
+tibble(
+  Name        = c("station_no", "measurement_time_id", "analysis_method_id",
+                  "reference_material_id", "survey_id", "sample_no",
+                  "lod_id", "sediment_no", "parameter",
+                  "measurement_start", "measurement_end",
+                  "measured_value", "unit",
+                  "data_qualifier", "internal_qa_count", "recovery_rate"),
+  `Data Type` = c("INTEGER", "INTEGER", "INTEGER",
+                  "INTEGER", "INTEGER", "INTEGER",
+                  "INTEGER", "INTEGER", "TEXT",
+                  "REAL", "REAL",
+                  "REAL", "TEXT",
+                  "TEXT", "REAL", "REAL"),
+  PK          = c("✓", "✓", "✓", "✓", "✓", "✓", "✓", "✓", "✓",
+                  "", "", "", "", "", "", ""),
+  FK          = c("station (station_no)",
+                  "measurement_time (measurement_time_id)",
+                  "analysis_method (analysis_method_id)",
+                  "reference_material (reference_material_id)",
+                  "survey (survey_id)",
+                  "sample (sample_no)",
+                  "lod (lod_id)",
+                  "", "parameter (parameter)",
+                  "", "", "", "", "", "", ""),
+  `NA Allowed`= c(FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE,
+                  TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE),
+  Description = c(
+    "Primary Key. Foreign Key to the station table.",
+    "Primary Key. Foreign Key to the measurement_time table.",
+    "Primary Key. Foreign Key to the analysis_method table.",
+    "Primary Key. Foreign Key to the reference_material table.",
+    "Primary Key. Foreign Key to the survey table.",
+    "Primary Key. Foreign Key to the sample table.",
+    "Primary Key. Foreign Key to the lod table.",
+    "Primary Key. Sequential index for multiple sediment layers within a sample.",
+    "Primary Key. Foreign Key to the parameter table.",
+    "Start of the measurement period (integer format YYYYMMDD).",
+    "End of the measurement period (integer format YYYYMMDD).",
+    "Measured concentration or numerical result.",
+    "Unit of measurement (e.g. mg/kg, g/kg).",
+    "Data quality qualifier code.",
+    "Number of measurements used for internal quality assurance.",
+    "Analytical recovery rate (%)."
+  ),
+  `Look Up`   = c("", "", "", "", "", "", "", "",
+                  "", "", "", "", "code_lookup (ICESCL_MUNIT)",
+                  "code_lookup (ICESCL_QFLAG)", "", "")
 )
 
 ```
