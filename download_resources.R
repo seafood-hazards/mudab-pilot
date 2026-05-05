@@ -1,8 +1,8 @@
 options(timeout = 600)
 
 # ── SQLite database ────────────────────────────────────────────────────────
-db_url <- "https://github.com/seafood-hazards/ices-dome-pilot/releases/download/v0.1.9/pilot_ices_dome.sqlite"
-local_db_file_name <- "pilot_ices_dome.sqlite"
+db_url <- "https://github.com/seafood-hazards/mudab-pilot/releases/download/v0.1.0/pilot_mudab.sqlite"
+local_db_file_name <- "pilot_mudab.sqlite"
 if (!file.exists(local_db_file_name)) {
   download.file(db_url, local_db_file_name, mode = "wb")
   message("Database downloaded.")

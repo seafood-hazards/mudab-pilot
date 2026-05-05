@@ -7,7 +7,7 @@ subtitle: "Estimation of location names from geographic coordinates"
 
 A common challenge in oceanographic datasets is missing or inconsistent location metadata. While sediment core data usually come with coordinates (latitude and longitude), fields such as the **Nearest Country** and the **Nearest Municipality** are often left blank or recorded inconsistently.
 
-To ensure consistency across the dataset, we algorithmically estimated these fields based on the core's location. This page outlines the data sources and geospatial methods used to populate the `country`, `municipality`, and `sea_name` columns in the [Site](db-schema.qmd#site-table) table.
+To ensure consistency across the dataset, we algorithmically estimated these fields based on the core's location. This page outlines the data sources and geospatial methods used to populate the `country`, `municipality`, and `sea_name` columns in the [survey](db-schema.qmd#survey) table.
 
 ::: {.callout-note}
 ### Note on Accuracy

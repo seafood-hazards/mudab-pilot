@@ -3,9 +3,9 @@ title: "Distance Calculation"
 subtitle: Distance calculation to the nearest coastline from core locations
 ---
 
-As the initial data analysis will be performed on the ICES-DOME sites located within European coastlines, the distances to the nearest coastline were calculated.
+As the initial data analysis will be performed on the MUDAB sites located within European coastlines, the distances to the nearest coastline were calculated.
 
-The distance data is available in the `dist_to_coast` column of the [Site](db-schema.qmd#site-table) table.
+The distance data is available in the `dist_to_coast` column of the [survey](db-schema.qmd#survey) table.
 
 ## Methods
 
@@ -25,19 +25,18 @@ The calculation was performed using the [sf](https://cran.r-project.org/web/pack
 // --- Query site locations ---
 df_loc = db.query(`
   SELECT DISTINCT
-    p1.project_id,
-    s2.site_id,
-    s2.latitude,
-    s2.longitude,
-    CASE
-      WHEN s2.dist_to_coast <= 10  THEN '0 to 10km'
-      WHEN s2.dist_to_coast <= 30  THEN '10 to 30km'
-      WHEN s2.dist_to_coast <= 100 THEN '30 to 100km'
-      ELSE '≥100km'
-    END AS distance
-  FROM sample s1
-  JOIN project p1 ON p1.project_id = s1.project_id
-  JOIN site s2 ON s2.site_id = s1.site_id
+     s3.survey_id,
+     s3.station_latitude AS latitude,
+     s3.station_longitude AS longitude,
+     CASE
+       WHEN s3.dist_to_coast <= 10  THEN '0 to 10km'
+       WHEN s3.dist_to_coast <= 30  THEN '10 to 30km'
+       WHEN s3.dist_to_coast <= 100 THEN '30 to 100km'
+       ELSE '≥100km'
+     END AS distance
+  FROM sediment s1
+  JOIN station s2 ON s2.station_no = s1.station_no
+  JOIN survey s3 ON s3.survey_id = s1.survey_id
 `)
 
 // --- World boundaries (Natural Earth via CDN) ---
@@ -51,19 +50,18 @@ dist_counts = db.query(`
          COUNT(*) AS '# Sampling Sites'
   FROM (
       SELECT DISTINCT
-        p1.project_id,
-        s2.site_id,
-        s2.latitude,
-        s2.longitude,
-        CASE
-          WHEN s2.dist_to_coast <= 10  THEN '0 to 10km'
-          WHEN s2.dist_to_coast <= 30  THEN '10 to 30km'
-          WHEN s2.dist_to_coast <= 100 THEN '30 to 100km'
-          ELSE '≥100km'
-        END AS distance
-      FROM sample s1
-      JOIN project p1 ON p1.project_id = s1.project_id
-      JOIN site s2 ON s2.site_id = s1.site_id
+         s3.survey_id,
+         s3.station_latitude AS latitude,
+         s3.station_longitude AS longitude,
+         CASE
+           WHEN s3.dist_to_coast <= 10  THEN '0 to 10km'
+           WHEN s3.dist_to_coast <= 30  THEN '10 to 30km'
+           WHEN s3.dist_to_coast <= 100 THEN '30 to 100km'
+           ELSE '≥100km'
+         END AS distance
+      FROM sediment s1
+      JOIN station s2 ON s2.station_no = s1.station_no
+      JOIN survey s3 ON s3.survey_id = s1.survey_id
   ) t
   GROUP BY distance
 `)
@@ -78,8 +76,8 @@ Plot.plot({
   caption: "Sediment Cores — LAEA Europe Projection",
   // Pan-European + Svalbard bounding box: 25°W–35°E, 33°N–82°N
   projection: ({width, height}) => {
-    const lonMin = -25, lonMax = 35
-    const latMin =  33, latMax = 82
+    const lonMin = -21, lonMax = 41
+    const latMin =  45, latMax = 78
     const mercY     = lat => Math.log(Math.tan(Math.PI / 4 + lat * Math.PI / 360))
     const yTop      = mercY(latMax), yBot = mercY(latMin)
     const yRange    = yTop - yBot

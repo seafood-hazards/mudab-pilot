@@ -26,7 +26,7 @@ The map below displays the spatial distribution of sediment cores. The markers a
 *   **Click the Expand icon <i class="fas fa-expand"></i>** to reset the view.
 *   **Filter** the data by toggling distance categories in the top-right menu (e.g., uncheck boxes to hide specific ranges).
 *   Use the **Legend** in the bottom right to interpret the color coding.
-*   **Hover** over a point to quickly identify the **Project** and **Site** IDs.
+*   **Hover** over a point to quickly identify the **survey** ID.
 *   **Click** on a marker to view exact coordinates, distance to shore (in km), and location names.
 
 ```{=html}
@@ -85,7 +85,7 @@ L = require("https://unpkg.com/leaflet@1.9.4/dist/leaflet.js")
 // --- Default view ---
 home_lat  = 55
 home_lng  = 5
-home_zoom = 4
+home_zoom = 5
 
 // --- Distance category order and colours (turbo-like palette) ---
 dist_order  = ["0 to 10km", "10 to 30km", "30 to 100km", "≥100km"]
@@ -102,29 +102,28 @@ dist_colors = ({
 
 // --- Query site points ---
 points_web = db.query(`
-  SELECT distinct p1.project_id,
-                  p1.project,
-                  s2.site_id,
-                  s2.station,
-                  s2.latitude,
-                  s2.longitude,
-                  s2.dist_to_coast,
-                  CASE
-                      WHEN s2.dist_to_coast <= 10 THEN '0 to 10km'
-                      WHEN s2.dist_to_coast <= 30 THEN '10 to 30km'
-                      WHEN s2.dist_to_coast <= 100 THEN '30 to 100km'
-                      ELSE '≥100km'
-                  END AS Distance,
-                  p1.country,
-                  s2.est_country,
-                  s2.country_code,
-                  s2.municipality,
-                  s2.sea_name
-  FROM sample s1
-           JOIN project p1
-                ON p1.project_id = s1.project_id
-           JOIN site s2
-                ON s2.site_id = s1.site_id
+  SELECT DISTINCT
+    s2.organisation,
+    s2.project_affiliation,
+    s2.responsible_institute,
+    s2.region,
+    s3.survey_id,
+    s3.station_latitude AS latitude,
+    s3.station_longitude AS longitude,
+    s3.dist_to_coast,
+    s3.est_country,
+    s3.country_code,
+    s3.municipality,
+    s3.sea_name,
+    CASE
+      WHEN s3.dist_to_coast <= 10  THEN '0 to 10km'
+      WHEN s3.dist_to_coast <= 30  THEN '10 to 30km'
+      WHEN s3.dist_to_coast <= 100 THEN '30 to 100km'
+      ELSE '≥100km'
+    END AS Distance
+  FROM sediment s1
+  JOIN station s2 ON s2.station_no = s1.station_no
+  JOIN survey s3 ON s3.survey_id = s1.survey_id
 `)
 ```
 
@@ -182,19 +181,19 @@ points_web = db.query(`
       })
 
       marker.bindTooltip(
-        `Project ID: ${d.project_id}, Site ID: ${d.site_id}`,
+        `Survey ID: ${d.survey_id}`,
         { sticky: true }
       )
 
       marker.bindPopup(`
-        <strong>Project ID:</strong> ${d.project_id}<br>
-        <strong>Project:</strong> ${d.project}<br>
-        <strong>Site ID:</strong> ${d.site_id}<br>
+        <strong>Survey ID:</strong> ${d.survey_id}<br>
+        <strong>Organisation:</strong> ${d.organisation}<br>
+        <strong>Project Affiliation:</strong> ${d.project_affiliation}<br>
+        <strong>Responsible Institute:</strong> ${d.responsible_institute}<br>
         <strong>Latitude:</strong> ${d.latitude != null ? d.latitude.toFixed(2) : "?"}<br>
         <strong>Longitude:</strong> ${d.longitude != null ? d.longitude.toFixed(2) : "?"}<br>
         <strong>Distance:</strong> ${d.dist_to_coast != null ? d.dist_to_coast.toFixed(1) + " km" : "?"}<br>
-        <strong>Country:</strong> ${d.country ?? "?"}<br>
-        <strong>Country 2:</strong> ${d.est_country ?? "?"}<br>
+        <strong>Country:</strong> ${d.est_country ?? "?"}<br>
         <strong>Country Code:</strong> ${d.country_code ?? "?"}<br>
         <strong>Municipality:</strong> ${d.municipality ?? "?"}<br>
         <strong>Sea/Ocean Name:</strong>${d.sea_name ?? "?"}

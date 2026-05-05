@@ -1,51 +1,355 @@
 ---
 title: "Data Preparation"
-subtitle: "Cleaning the MUDAB Dataset"
+subtitle: "Cleaning and translating the MUDAB dataset"
 ---
 
-```{css, echo=FALSE}
-th {
-  white-space: nowrap;
-}
+```{r setup, include=FALSE}
+library(tibble)
 ```
 
-This page outlines the data preparation steps required to standardise the MUDAB dataset.
+This page documents the data preparation steps applied to the raw MUDAB export before loading it into the pilot SQLite database. All German field names and coded values are translated to English to ensure consistency with the ICES-DOME dataset.
 
-## 1. Data Filtering
+---
 
-The original dataset was filtered by bounding box and parameter group to extract the data relevant to this study.
+## 1. Column Name Translation
 
-### Bounding Box
-
-Sampling sites were restricted to European oceans and seas using the following bounding box.
-
-- **Latitude:** 35 to 85 degrees
-- **Longitude:** -30 to 30 degrees
-
-### Parameter Groups
-
-Only parameters belonging to the following four categories were used in this study.
-
-- **I-MET:** Metals and metalloids
-- **P-PHY:** Physical measurements
-- **I-MAJ:** Major inorganic constituents
-- **B-BIO:** Biological measurements
-
-## 2. Value Correction
-
-### Code Correction
-
-All codes were converted to uppercase, as both cases appeared interchangeably in the original dataset. In addition, the following codes were corrected as they were inconsistently used throughout the original dataset.
+The raw MUDAB CSV export uses German column names. The table below maps each German original to its English equivalent used throughout the database. The renaming is applied with `dplyr::rename(all_of(col_translation))`.
 
 ```{r}
-library(tibble)
-
-sample_sediment_corrections <- tribble(
-  ~`Group`,      ~`Old Code`,   ~`New Code`,   ~`Name`,
-  "Institute",   "LNUG",        "LUNG",        "Landesamt für Umwelt, Naturschutz und Geologie in Mecklenburg-Vorpommern",
-  "Matrix",      "SEDTOT",      "SEDtot",      "Sediment - untreated total",
-  "DC Flag",     "21-CONVR-1",  "21-METPT-1",  "METPT (method of pretreatment) is added based on reported MATRX code",
+tribble(
+  ~`English Name`,                    ~`German Original`,
+  "station_name",                     "Name der Projektstation",
+  "station_id",                       "ProjektStationID",
+  "responsible_institute",            "Verantwortliches Institut",
+  "region",                           "Region",
+  "institute",                        "Institute",
+  "latitude",                         "Breitengrad",
+  "longitude",                        "Längengrad",
+  "organisation",                     "Organisation",
+  "project_affiliation",              "Projektzugehörigkeit",
+  "station_type",                     "Stationstyp",
+  "water_body_category",              "Gewässerkategorie",
+  "parameter",                        "Parameter",
+  "parameter_name",                   "Parametername",
+  "parameter_group",                  "Parametergruppe",
+  "cas_number",                       "CAS-Nummer",
+  "lawa_code",                        "LAWA-Code",
+  "measured_value",                   "Messwert",
+  "unit",                             "Einheit",
+  "year",                             "Jahr",
+  "measurement_date",                 "Datum der Messung",
+  "measurement_time",                 "Uhrzeit der Messung",
+  "data_qualifier",                   "Qualifizierung Messwert",
+  "measurement_method_code",          "Code der Messmethode",
+  "chemical_treatment",               "Chemische Behandlung der Probe",
+  "physical_treatment",               "Physikalische Behandlung der Probe",
+  "internal_qa_detection_limit",      "interne QS / Nachweisgrenze",
+  "internal_qa_quantification_limit", "interne QS / Bestimmungsgrenze",
+  "measurement_basis",                "Basis der Messung",
+  "expanded_uncertainty_pct",         "Angabe der erweiterten Messunsicherheit in %",
+  "uncertainty_method",               "Ermittlungsmethode der Messunsicherheit",
+  "accreditation",                    "Akkreditierung",
+  "analytical_laboratory",            "Analyselabor",
+  "control_chart_type",               "Typ der Kontrollkarte",
+  "internal_qa_count",                "Messanzahl interne QS",
+  "measurement_start",                "Beginn der Probenmessung",
+  "measurement_end",                  "Ende der Probenmessung",
+  "discipline",                       "Disziplin",
+  "proficiency_testing",              "Vergleichsprüfung",
+  "recovery_rate",                    "Wiederfindungsrate",
+  "reference",                        "Referenz",
+  "reference_material_code",          "Referenzmaterial Code",
+  "reference_material_basis",         "Referenzmaterial Basis",
+  "reference_material_type",          "Referenzmaterial Typ",
+  "reference_material_sd",            "Referenzmaterial Standardabweichung",
+  "reference_material_mean",          "Referenzmaterial Mittelwert",
+  "monitoring_station_name",          "Name der Messstation",
+  "measurement_depth",                "Messtiefe",
+  "station_latitude",                 "Breitengrad der Messstation",
+  "station_longitude",                "Längengrad der Messstation",
+  "measurement_project",              "Messprojekt",
+  "survey_start",                     "Beginn der Reise",
+  "survey_end",                       "Ende der Reise",
+  "vessel_code",                      "Schiffcode",
+  "platform_type",                    "Typ der Plattform",
+  "vessel_name",                      "Schiffname",
+  "sample_id",                        "Proben-ID",
+  "layer_upper_boundary",             "Schicht - obere Grenze",
+  "layer_lower_boundary",             "Schicht - untere Grenze",
+  "sampling_method",                  "Methode der Probenentnahme",
+  "flag",                             "Flag",
+  "matrix",                           "Matrix",
+  "sediment_composition",             "Sedimentzusammensetzung",
+  "sediment_content",                 "Sedimentinhalt",
+  "sampled_area",                     "Beprobte Fläche",
+  "storage_method",                   "Lagerungsmethode",
+  "preservation_method",              "Konservierungsmethode",
+  "cleaning_procedure",               "Reinigungsverfahren"
 )
+```
 
-sample_sediment_corrections
+After renaming, columns where all values are `NA` are removed using `select(where(~ !all(is.na(.))))`. This drops `storage_method`, `preservation_method`, and `cleaning_procedure`, which contain no data in the current export.
+
+---
+
+## 2. Code Lookup Table
+
+The code lookup table maps coded field values to their human-readable descriptions. It is derived from the MUDAB code list file and filtered to include only codes that appear in the sediment data.
+
+### 2.1 Category Code Translation
+
+Each row in the raw code list file begins with a German category description in the format `"Code-Liste:     CATEGORY_CODE  -   CATEGORY_CODE - German description"`. The category name is extracted and translated to English using the table below.
+
+```{r}
+tribble(
+  ~`Category Code`,            ~`Category Name (English)`,
+  "ICESCL_AGDET",              "Marine mammal measurements. Column: Age determination method",
+  "ICESCL_ASTSA",              "Marine mammal measurements. Column: Condition at sampling",
+  "ICESCL_BASIS",              "All compartment measurements. Column: Basis of measurement",
+  "ICESCL_DTYPE",              "Biology measurements. Column: Data type",
+  "ICESCL_MATRIX",             "All compartment measurements. Column: Matrix (water, sediment, biota) and sub-sample (biology)",
+  "ICESCL_METCU",              "All compartment measurements. Column: Uncertainty determination method",
+  "ICESCL_METCX",              "All compartment measurements. Column: Chemical treatment of sample",
+  "ICESCL_METOA",              "All compartment measurements. Column: Measurement method code",
+  "ICESCL_METPT",              "All compartment measurements. Column: Physical treatment of sample",
+  "ICESCL_MSTAT",              "Project station. Column: MSTAT",
+  "ICESCL_MUNIT",              "All compartment measurements. Column: Unit",
+  "ICESCL_ORGSP",              "Marine mammal measurements. Column: Specimen origin",
+  "ICESCL_PARAM",              "All compartment measurements/parameters. Column: Parameter",
+  "ICESCL_PARAMGROUP",         "All compartment measurements/parameters. Column: Parameter group",
+  "ICESCL_QFLAG",              "All compartment measurements. Column: Quality flag",
+  "ICESCL_RLABO",              "All compartment measurements. Column: Institute",
+  "ICESCL_RLIST",              "Biota measurements. Column: Reference list",
+  "ICESCL_SEXCO",              "Marine mammal measurements. Column: Sex code",
+  "ICESCL_SHIPC",              "All compartment measurements. Column: Vessel code",
+  "ICESCL_SIZRF",              "Biology measurements. Column: Size reference",
+  "ICESCL_STAGE",              "Biology measurements. Column: Life stage",
+  "ICESCL_VFLAG",              "All compartment measurements. Column: Flag",
+  "ICESCL_WLTYP",              "Project station. Column: WLTYP",
+  "MUDABCL_BULKING",           "Marine mammal measurements. Column: Bulking",
+  "MUDABCL_CMPTMT",            "Physical station parameters. Column: Compartment",
+  "MUDABCL_DISEASESMM",        "Marine mammal measurements. Columns: Further pathology results",
+  "MUDABCL_INSTITUTE",         "Project station & all compartment measurements. Column: Institute & responsible institute",
+  "MUDABCL_LENGTH_MEAS_METH",  "Biota measurements. Column: Length measurement method",
+  "MUDABCL_MEDIUM",            "All compartment measurements. Column: Medium",
+  "MUDABCL_MMAGECL",           "Marine mammal measurements. Column: Age class",
+  "MUDABCL_ORGANISATION",      "All compartments. Column: Organisation",
+  "MUDABCL_PARAMCAS",          "All compartment measurements/parameters. Column: Parameter (CAS)",
+  "MUDABCL_PLATFORMTYPE",      "All compartment measurements. Column: Platform type",
+  "MUDABCL_STATIONTYPE",       "Project station. Column: Station type",
+  "WORMS_SPECIES",             "Biology & biota measurements. Column: Species, APHIAID"
+)
+```
+
+### 2.2 Filter by Sediment Data
+
+The full code list covers all MUDAB compartments (water, biota, sediment, marine mammals, etc.). To keep only the codes relevant to the sediment data, the lookup table is filtered using a mapping of database columns to their corresponding category codes. Only code entries that appear in the actual sediment data are retained.
+
+```{r}
+tribble(
+  ~`Data Column`,           ~`Category Code`,
+  "responsible_institute",  "MUDABCL_INSTITUTE",
+  "responsible_institute",  "ICESCL_RLABO",
+  "institute",              "MUDABCL_INSTITUTE",
+  "institute",              "ICESCL_RLABO",
+  "organisation",           "MUDABCL_ORGANISATION",
+  "station_type",           "MUDABCL_STATIONTYPE",
+  "parameter",              "ICESCL_PARAM",
+  "parameter",              "MUDABCL_PARAMCAS",
+  "parameter_group",        "ICESCL_PARAMGROUP",
+  "unit",                   "ICESCL_MUNIT",
+  "data_qualifier",         "ICESCL_QFLAG",
+  "measurement_method_code","ICESCL_METOA",
+  "chemical_treatment",     "ICESCL_METCX",
+  "physical_treatment",     "ICESCL_METPT",
+  "measurement_basis",      "ICESCL_QFLAG",
+  "uncertainty_method",     "ICESCL_METCU",
+  "analytical_laboratory",  "MUDABCL_INSTITUTE",
+  "analytical_laboratory",  "ICESCL_RLABO",
+  "reference_material_basis","ICESCL_QFLAG",
+  "vessel_code",            "ICESCL_SHIPC",
+  "platform_type",          "MUDABCL_PLATFORMTYPE",
+  "flag",                   "ICESCL_VFLAG",
+  "matrix",                 "ICESCL_MATRIX"
+)
+```
+
+---
+
+## 3. Data Translation
+
+Several columns in the raw data contain German text values that are translated to English before loading into the database.
+
+### 3.1 Region
+
+The `region` column uses two German sea names which are mapped to their English equivalents.
+
+```{r}
+tribble(
+  ~`German`,  ~`English`,
+  "Nordsee",  "North Sea",
+  "Ostsee",   "Baltic Sea"
+)
+```
+
+### 3.2 Sediment Composition
+
+The `sediment_composition` column contains free-text field descriptions in German, including both full sentences and abbreviated field codes. The table below provides the full translation used. Values that are data artefacts (e.g. `)`, `-999`) are set to `NA`.
+
+```{r}
+tribble(
+  ~`German`,                                                                           ~`English`,
+  "Feinsand/ Schlick, braun-schwarz, geruchlos",                                       "Fine sand / silt, brown-black, odourless",
+  "Feinsand/ Schlick,grau-schwarz, geruchlos",                                         "Fine sand / silt, grey-black, odourless",
+  "Feinsand / Schlick, grau-schwarz, ohne Geruch",                                     "Fine sand / silt, grey-black, no odour",
+  "Schlick, grau-schwarz, geruch nach Fisch",                                          "Silt, grey-black, fishy odour",
+  "Schlick, grau-schwarz, geruchlos",                                                   "Silt, grey-black, odourless",
+  "f.h.Sd.",                                                                            "Fine light sand",
+  "Sd.",                                                                                "Sand",
+  "gr.Sd.,gr.Sk.",                                                                      "Coarse sand, coarse shell gravel",
+  "f.gr.+s.Sd.",                                                                        "Fine coarse + black sand",
+  "f.gr.Sd.",                                                                           "Fine coarse sand",
+  "s.Sk.br.Sd.",                                                                        "Black shell gravel, brown sand",
+  "br.Sd.gr.Sk",                                                                        "Brown sand, coarse shell gravel",
+  "gr.Sk.f.gr.Sd.",                                                                     "Coarse shell gravel, fine coarse sand",
+  "f.gr.Sd.gr.Sk.",                                                                     "Fine coarse sand, coarse shell gravel",
+  "f.gr.Sd.br.Sk.",                                                                     "Fine coarse sand, brown shell gravel",
+  "f.gr.Sd.T.",                                                                         "Fine coarse sand, clay",
+  "f.gr.+sSd.",                                                                         "Fine coarse + black sand",
+  "s.+br.Sk.,M.",                                                                       "Black + brown shell gravel, mussels",
+  "s.+br.Sk.",                                                                          "Black + brown shell gravel",
+  "sand.gr.Ton",                                                                        "Sandy coarse clay",
+  "br.Sk.",                                                                             "Brown shell gravel",
+  "br.T.Sk.",                                                                           "Brown clay, shell gravel",
+  "br.+gr.Sk.",                                                                         "Brown + coarse shell gravel",
+  "gr.s.sd.T.",                                                                         "Coarse black sandy clay",
+  "gr.Sd.St.M.",                                                                        "Coarse sand, stones, mussels",
+  "f.br.Sd.",                                                                           "Fine brown sand",
+  ")",                                                                                   NA_character_,
+  "-999",                                                                               NA_character_,
+  "Schlick",                                                                            "Silt",
+  "M",                                                                                  "Mussels",
+  "f.gr.Sd.M.",                                                                         "Fine coarse sand, mussels",
+  "Schlick, schwarz, nach H2S",                                                         "Silt, black, H2S odour",
+  "Schlick, schwarz, n. H2S",                                                           "Silt, black, H2S odour",
+  "Schlick, schwarz, leicht nach H2S",                                                  "Silt, black, slight H2S odour",
+  "Schlickwatt",                                                                        "Muddy tidal flat",
+  "Sandwatt",                                                                           "Sandy tidal flat",
+  "Vorland",                                                                            "Salt marsh / foreland",
+  "Feinsand",                                                                           "Fine sand",
+  "Feinsand, bräunlich, ohne Geruch",                                                   "Fine sand, brownish, no odour",
+  "Feinsand, braeunlich, geruchlos",                                                    "Fine sand, brownish, odourless",
+  "Feinsand, braeunlich-grau, geruchlos",                                               "Fine sand, brownish-grey, odourless",
+  "Feinsand, grau-braun",                                                               "Fine sand, grey-brown",
+  "Feinsand, hellbraun",                                                                "Fine sand, light brown",
+  "grau-schwarzer Feinsand ohne Geruch",                                                "Grey-black fine sand, no odour",
+  "Feinsand, grau-braun, Geruch nach Fisch",                                            "Fine sand, grey-brown, fishy odour",
+  "br.Sk.T.",                                                                           "Brown shell gravel, clay",
+  "br.Sk.gr.T.",                                                                        "Brown shell gravel, coarse clay",
+  "gr.T.",                                                                              "Coarse clay",
+  "gr.Sd.",                                                                             "Coarse sand",
+  "br.Sk.bel",                                                                          "Brown shell gravel, biogenic",
+  "gr.T.s.Ein.",                                                                        "Coarse clay, black inclusions",
+  "mud",                                                                                "Mud",
+  "br-gr.sd.Sk.",                                                                       "Brown-grey sandy shell gravel",
+  "Sd.gr.T.",                                                                           "Sand, coarse clay",
+  "subox.T.",                                                                           "Suboxic clay",
+  "gr.Sk.",                                                                             "Coarse shell gravel",
+  "Mischwatt",                                                                          "Mixed tidal flat",
+  "br.Sk.weich",                                                                        "Brown shell gravel, soft",
+  "Feinsand/Schlick, grau-schwarz, schwach nach H2S",                                   "Fine sand / silt, grey-black, slight H2S odour",
+  "br-gr.T.",                                                                           "Brown-grey clay",
+  "g./grün L.",                                                                         "Yellow-green loam",
+  "gr./grün Sk.",                                                                       "Grey-green shell gravel",
+  "grgrün Sd.",                                                                         "Grey-green sand",
+  "Feinsand, grau, geruchlos",                                                          "Fine sand, grey, odourless",
+  "Feinsand, grau-braun, geruchlos",                                                    "Fine sand, grey-brown, odourless",
+  "s.Sk.",                                                                              "Black shell gravel",
+  "gr.Sk.Schill",                                                                       "Coarse shell gravel, shell debris",
+  "f.gr.+s.Sd.M.",                                                                      "Fine coarse + black sand, mussels",
+  "gr.Sk.,f.Sd.",                                                                       "Coarse shell gravel, fine sand",
+  "gb.bnt.Sd.kl.St.",                                                                   "Yellowish multicoloured sand, small stones",
+  "gr.Sk. H2S",                                                                         "Coarse shell gravel, H2S",
+  "gr.Sk.M.",                                                                           "Coarse shell gravel, mussels",
+  "br.Sed.fest",                                                                        "Brown sediment, firm",
+  "br.Sed./s.E.",                                                                       "Brown sediment / black inclusions",
+  "s.Sk. H2S",                                                                          "Black shell gravel, H2S",
+  "gr.Sd.St.",                                                                          "Coarse sand, stones",
+  "gr.Lehm",                                                                            "Coarse loam",
+  "br.+s.Sk.",                                                                          "Brown + black shell gravel",
+  "s.Sk.Schill",                                                                        "Black shell gravel, shell debris",
+  "gr.+s.Sk.",                                                                          "Coarse + black shell gravel",
+  "f.gr.+br.Sd.",                                                                       "Fine coarse + brown sand",
+  "s.Sk",                                                                               "Black shell gravel",
+  "s.Sk.gr.Einschl",                                                                    "Black shell gravel, coarse inclusions",
+  "gr.+br.Sk.",                                                                         "Coarse + brown shell gravel",
+  "gr.Sk.s.Einschl",                                                                    "Coarse shell gravel, black inclusions",
+  "Schlick, schwarz, H2S",                                                              "Silt, black, H2S",
+  "Schlick, schwarz, H2S-Geruch",                                                       "Silt, black, H2S odour",
+  "Schlick, schwarz, n.H2S",                                                            "Silt, black, H2S odour",
+  "Schlick, grau-schwarz, leicht nach H2S",                                             "Silt, grey-black, slight H2S odour",
+  "Schlick, dkl.grau, leicht H2S",                                                      "Silt, dark grey, slight H2S",
+  "Feinsand/Schlick",                                                                    "Fine sand / silt",
+  "Feinsand, braun",                                                                     "Fine sand, brown",
+  "Feinsand / Schlick, braun-schwarz, ohne Geruch",                                     "Fine sand / silt, brown-black, no odour",
+  "Feinsand / Schlick, schwarz-bräunlich, ohne Geruch",                                 "Fine sand / silt, black-brownish, no odour",
+  "Feinsand/Schlick, braun-schwarz, geruchlos",                                         "Fine sand / silt, brown-black, odourless",
+  "braun-schwarzer Sand ohne Geruch",                                                    "Brown-black sand, no odour",
+  "Feinsand, grau-schwarz",                                                              "Fine sand, grey-black",
+  "Grobsand",                                                                            "Coarse sand",
+  "Sand, 0-4 cm: hell, >4cm: grauschwarz, schwach H2S",                                 "Sand, 0-4 cm: light, >4cm: grey-black, slight H2S",
+  "Feinsand, bräunlich-schwarz, ohne Geruch",                                            "Fine sand, brownish-black, no odour",
+  "Feinsand, grau/braun",                                                                "Fine sand, grey/brown",
+  "Feinsand, grau/oliv",                                                                 "Fine sand, grey/olive",
+  "Schlick, grau-schwarz, H2S",                                                          "Silt, grey-black, H2S",
+  "Schlick, H2S",                                                                        "Silt, H2S",
+  "schwarze Farbe; muffiger Geruch; hoher organischer Anteil",                           "Black colour; musty odour; high organic content",
+  "Farbe: dunkelgrau-olive; ohne Geruch; kein organischer Anteil erkennba",              "Colour: dark grey-olive; no odour; no organic content visible",
+  "Schlick mit Sandanteil; Farbe: dunkel, grau; ohne Geruch; festere Kons",              "Silt with sand fraction; colour: dark grey; no odour; firmer consistency",
+  "Schlick, wenig Feinsand, grauoliv, Schwefelwasserstoff",                              "Silt, little fine sand, grey-olive, hydrogen sulphide",
+  "Schlick, oliv-schwarz, H2S",                                                          "Silt, olive-black, H2S",
+  "Schlick, dunkelgrau, Schwefelwasserstoff",                                            "Silt, dark grey, hydrogen sulphide",
+  "Schlick, grau/schwarz, H2S",                                                          "Silt, grey/black, H2S",
+  "Schlick, braun-schwarz, H2S-Geruch",                                                  "Silt, brown-black, H2S odour",
+  "coarse sand-gravel",                                                                  "Coarse sand-gravel",
+  "Schlick, schwarz, schwach nach H2S",                                                  "Silt, black, slight H2S odour",
+  "Feinsand/Schlick, bräunlich-schwarz, ohne Geruch",                                    "Fine sand / silt, brownish-black, no odour",
+  "Schlick, dunkelgrau/schwarz",                                                         "Silt, dark grey/black",
+  "braun-schwarzer Schlick ohne Geruch",                                                 "Brown-black silt, no odour",
+  "Feinsand-Schlick, braun",                                                             "Fine sand-silt, brown",
+  "Feinsand/ Schlick, grau-schwarz, geruchlos",                                          "Fine sand / silt, grey-black, odourless",
+  "Sand",                                                                                "Sand",
+  "fine sand",                                                                           "Fine sand",
+  "Schlick auf RS",                                                                      "Silt on rocky substrate",
+  "sandiger Schlick",                                                                    "Sandy silt",
+  "Schlick, dkl.grau, hellbr.Auflage, leicht H2S",                                      "Silt, dark grey, light brown surface layer, slight H2S",
+  "Schlick, schwarz-bräunlich, ohne Geruch",                                             "Silt, black-brownish, no odour",
+  "Feinsand/Schlick, H2S",                                                               "Fine sand / silt, H2S",
+  "Schlick, grau-schwarz, moderig",                                                      "Silt, grey-black, musty odour",
+  "Schlick, grau-braun, H2S-Geruch",                                                     "Silt, grey-brown, H2S odour",
+  "Schlick, schwarz-braun, H2S-Geruch",                                                  "Silt, black-brown, H2S odour",
+  "Schlick, braun-schwarz, H2S",                                                         "Silt, brown-black, H2S",
+  "braun-schwarzer Feinsand ohne Geruch",                                                "Brown-black fine sand, no odour",
+  "Feinsand, bräunlich-grau",                                                            "Fine sand, brownish-grey",
+  "Feinsand, +Seegras, dunkelgrau",                                                      "Fine sand, seagrass, dark grey",
+  "braun-grauer Feinsand  ohne Geruch+Seegras",                                          "Brown-grey fine sand, no odour, seagrass"
+)
+```
+
+### 3.3 Sediment Content
+
+The `sediment_content` column contains short German descriptors of the sediment content. The value `-999` is a sentinel indicating no data and is replaced with `NA`.
+
+```{r}
+tribble(
+  ~`German`,                        ~`English`,
+  "-999",                           NA_character_,
+  "grau/braun",                     "grey/brown",
+  "grau/schwarz",                   "grey/black",
+  "schwarz",                        "black",
+  "oliv/schwarz",                   "olive/black",
+  "Miesmuscheln, Seegrasbewuchs",   "blue mussels, seagrass growth",
+  "wenig Muschelschill",            "little shell debris",
+  "grau",                           "grey"
+)
 ```

@@ -2,7 +2,7 @@ project:
   type: website
   pre-render: download_resources.R
   resources:
-    - pilot_ices_dome.sqlite
+    - pilot_mudab.sqlite
     - libs/sqljs/
   render:
     - "*.qmd"
@@ -35,8 +35,6 @@ website:
             href: distance-interactive-map.qmd
       - text: "Data Export"
         menu:
-          - text: "Sediment Fractions"
-            href: sediment-fractions.qmd
           - text: "Export to Tabular File"
             href: data-export.qmd
       - text: "Tools"

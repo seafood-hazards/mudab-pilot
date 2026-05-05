@@ -15,71 +15,85 @@ The data file was created for the initial analysis using the MUDAB data.
 
 A tab-delimited file containing all major data from the database is available for download at the following location.
 
- * [pilot_ices_dome.tsv.gz](https://github.com/seafood-hazards/ices-dome-pilot/releases/download/v0.1.9/pilot_ices_dome.tsv.gz)
+ * [pilot_mudab.tsv.gz](https://github.com/seafood-hazards/mudab-pilot/releases/download/v0.1.0/pilot_mudab.tsv.gz)
 
 ## Data File Summary
 
-The file `pilot_ices_dome.tsv.gz` is a denormalized (flat) export of the relational database, designed to facilitate immediate analysis without requiring complex SQL joins.
+The file `pilot_mudab.tsv.gz` is a denormalized (flat) export of the relational database, designed to facilitate immediate analysis without requiring complex SQL joins.
 
 ## Column Definition
 
-```{r}
+```{r setup, include=FALSE}
 library(tibble)
+```
 
-exported_columns_tbl <- tribble(
-  ~`Column Name`,            ~`Source Table`,     ~Type,     ~Description,
-  # Project metadata
-  "project_id",              "project",           "INTEGER", "Surrogate key linking to the project table.",
-  "project",                 "project",           "TEXT",    "Monitoring programme code(s), e.g. CEMP or CEMP~NATL.",
-  "country",                 "project",           "TEXT",    "Country name of the reporting institute.",
+```{r}
+tribble(
+  ~`Column Name`,                    ~`Source Table`,      ~`Type`,    ~`Description`,
 
-  # Site metadata
-  "site_id",                 "site",              "INTEGER", "Surrogate key linking to the site table.",
-  "latitude",                "site",              "REAL",    "Latitude coordinate (decimal degrees).",
-  "longitude",               "site",              "REAL",    "Longitude coordinate (decimal degrees).",
-  "dist_to_coast",           "site",              "REAL",    "Distance from the station to the nearest coastline (km).",
-  "est_country",             "site",              "TEXT",    "Estimated country derived from station coordinates.",
-  "country_code",            "site",              "TEXT",    "ISO country code, e.g. NO, DK.",
-  "municipality",            "site",              "TEXT",    "Municipality name.",
-  "sea_name",                "site",              "TEXT",    "Name of the sea or coastal water body.",
+  # --- Keys ---
+  "station_no",                      "station",            "INTEGER",  "Surrogate key linking to the station table.",
+  "measurement_time_id",             "measurement_time",   "INTEGER",  "Surrogate key linking to the measurement_time table.",
+  "analysis_method_id",              "analysis_method",    "INTEGER",  "Surrogate key linking to the analysis_method table.",
+  "reference_material_id",           "reference_material", "INTEGER",  "Surrogate key linking to the reference_material table.",
+  "survey_id",                       "survey",             "INTEGER",  "Surrogate key linking to the survey table.",
+  "sample_no",                       "sample",             "INTEGER",  "Surrogate key linking to the sample table.",
+  "lod_id",                          "lod",                "INTEGER",  "Surrogate key linking to the lod table.",
 
-  # Parameter metadata
-  "param",                   "parameter",         "TEXT",    "ICES parameter code, e.g. HG, CD.",
-  "param_description",       "parameter",         "TEXT",    "Full name or description of the parameter.",
+  # --- Station metadata ---
+  "organisation",                    "station",            "TEXT",     "Organisation type responsible for the station (e.g. NATIONAL, OSPAR, HELCOM).",
+  "project_affiliation",             "station",            "TEXT",     "Monitoring programme affiliation (e.g. BLMP+).",
+  "responsible_institute",           "station",            "TEXT",     "Institute responsible for the station.",
+  "region",                          "station",            "TEXT",     "Sea region (e.g. North Sea, Baltic Sea).",
+  "water_body_category",             "station",            "TEXT",     "Water body category code.",
 
-  # Sample metadata
-  "year",                    "sample",            "INTEGER", "Year of sampling.",
-  "date",                    "sample",            "TEXT",    "Full sampling date (format DD/MM/YYYY).",
-  "sample_type",             "sample",            "TEXT",    "Sample type code, e.g. GC (grab/core).",
-  "sample_type_description", "sample",            "TEXT",    "Full description of the sample type.",
+  # --- Measurement time ---
+  "year",                            "measurement_time",   "REAL",     "Year of measurement.",
+  "survey_start",                    "survey",             "REAL",     "Survey start date (integer format YYYYMMDD).",
+  "survey_end",                      "survey",             "REAL",     "Survey end date (integer format YYYYMMDD).",
 
-  # Sediment depth / sub-sample index
-  "depth_from",              "sediment",          "REAL",    "Upper boundary of the sampled sediment layer (m).",
-  "depth_to",                "sediment",          "REAL",    "Lower boundary of the sampled sediment layer (m).",
-  "sediment_no",             "sediment",          "INTEGER", "Sequential sub-sample index within a sample–parameter combination.",
+  # --- Location ---
+  "station_latitude",                "survey",             "REAL",     "Latitude of the monitoring station (decimal degrees).",
+  "station_longitude",               "survey",             "REAL",     "Longitude of the monitoring station (decimal degrees).",
+  "dist_to_coast",                   "survey",             "REAL",     "Distance from station to nearest coastline (km).",
+  "est_country",                     "survey",             "TEXT",     "Estimated country derived from station coordinates.",
+  "country_code",                    "survey",             "TEXT",     "ISO country code (e.g. DE).",
+  "municipality",                    "survey",             "TEXT",     "Municipality name.",
+  "sea_name",                        "survey",             "TEXT",     "Name of the sea or ocean.",
 
-  # Measurement
-  "value",                   "sediment",          "REAL",    "Measured concentration or numerical result.",
-  "unit",                    "sediment",          "TEXT",    "Unit of measurement, e.g. ug/kg or %.",
-  "basis",                   "sediment",          "TEXT",    "Basis of measurement code, e.g. D (dry weight).",
-  "qflag",                   "sediment",          "TEXT",    "Data quality flag code(s), e.g. < (below detection limit).",
-  "vflag",                   "sediment",          "TEXT",    "Validity flag code(s).",
+  # --- Sample metadata ---
+  "sampling_method",                 "sample",             "TEXT",     "Method used to collect the sample (e.g. BC = box corer, VV = Van Veen grab).",
+  "matrix",                          "sample",             "TEXT",     "Sediment matrix fraction code (e.g. SED20, SED63, SED2000).",
+  "sediment_composition",            "sample",             "TEXT",     "Field description of the sediment composition (translated to English).",
+  "sediment_no",                     "sediment",           "INTEGER",  "Sequential index for multiple sediment layers within a sample.",
+  "layer_upper_boundary",            "sample",             "REAL",     "Upper depth boundary of the sampled sediment layer (cm).",
+  "layer_lower_boundary",            "sample",             "REAL",     "Lower depth boundary of the sampled sediment layer (cm).",
 
-  # Detection limits & uncertainty
-  "lod",                     "lld",               "REAL",    "Limit of Detection (LOD) value.",
-  "loq",                     "lld",               "REAL",    "Limit of Quantification (LOQ) value.",
-  "uncrt",                   "sediment",          "REAL",    "Measurement uncertainty.",
-  "metcu",                   "sediment",          "TEXT",    "Method of measurement uncertainty.",
+  # --- Parameter ---
+  "parameter",                       "parameter",          "TEXT",     "ICES parameter code (e.g. HG, CD, ZN).",
+  "parameter_name",                  "parameter",          "TEXT",     "Full name of the parameter (e.g. mercury, cadmium).",
+  "parameter_group",                 "parameter",          "TEXT",     "Parameter group code (e.g. I-MET for metals and metalloids).",
+  "cas_number",                      "parameter",          "TEXT",     "Chemical Abstracts Service registry number.",
 
-  # Analysis method
-  "labo",                    "analysis_method",   "TEXT",    "Analysing laboratory code.",
-  "metst",                   "analysis_method",   "TEXT",    "Sample storage method code.",
-  "metpt",                   "analysis_method",   "TEXT",    "Pre-treatment method code.",
-  "metps",                   "analysis_method",   "TEXT",    "Sub-sampling method code.",
-  "metcx",                   "analysis_method",   "TEXT",    "Extraction / clean-up method code.",
-  "metoa",                   "analysis_method",   "TEXT",    "Analytical technique code, e.g. ICP-MS, AAS-GF."
+  # --- Measurement ---
+  "measured_value",                  "sediment",           "REAL",     "Measured concentration or numerical result.",
+  "unit",                            "sediment",           "TEXT",     "Unit of measurement (e.g. mg/kg, g/kg).",
+  "data_qualifier",                  "sediment",           "TEXT",     "Data quality qualifier code.",
+
+  # --- Analysis method ---
+  "analytical_laboratory",           "analysis_method",    "TEXT",     "Code of the laboratory that performed the analysis.",
+  "internal_qa_count",               "sediment",           "REAL",     "Number of measurements used for internal quality assurance.",
+  "internal_qa_detection_limit",     "lod",                "REAL",     "Limit of detection value for this parameter measurement.",
+  "recovery_rate",                   "sediment",           "REAL",     "Analytical recovery rate (%).",
+  "internal_qa_quantification_limit","lod",                "REAL",     "Limit of quantification value for this parameter measurement.",
+  "expanded_uncertainty_pct",        "lod",                "REAL",     "Expanded measurement uncertainty expressed as a percentage.",
+  "uncertainty_method",              "lod",                "TEXT",     "Method used to determine the measurement uncertainty.",
+  "measurement_method_code",         "analysis_method",    "TEXT",     "Analytical measurement method code (e.g. AAS-CV, ICP-OES).",
+  "chemical_treatment",              "analysis_method",    "TEXT",     "Chemical treatment applied to the sample (e.g. HF-C, HNO).",
+  "physical_treatment",              "analysis_method",    "TEXT",     "Physical pre-treatment applied to the sample (e.g. DFRZ = freeze-drying).",
+  "measurement_basis",               "analysis_method",    "TEXT",     "Basis of measurement (e.g. D = dry weight).",
+  "accreditation",                   "analysis_method",    "TEXT",     "Accreditation status of the analytical laboratory."
 )
 
-exported_columns_tbl
-
 ```
+

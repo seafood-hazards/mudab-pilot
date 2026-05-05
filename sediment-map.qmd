@@ -63,12 +63,11 @@ L = require("https://unpkg.com/leaflet@1.9.4/dist/leaflet.js")
 
 home_lat  = 55
 home_lng  = 5
-home_zoom = 4
+home_zoom = 5
 
 elements = [
   { label: "Cobalt (CO)",      value: "CO" },
   { label: "Copper (CU)",      value: "CU" },
-  { label: "Iodine (I)",       value: "I"  },
   { label: "Manganese (MN)",   value: "MN" },
   { label: "Molybdenum (MO)",  value: "MO" },
   { label: "Selenium (SE)",    value: "SE" },
@@ -92,13 +91,13 @@ viewof selected_element = Inputs.select(elements, {
 
 // --- Year range ---
 year_range_result = db.query(`
-  SELECT MIN(s3.year) AS min_year, MAX(s3.year) AS max_year
+  SELECT MIN(m.year) AS min_year, MAX(m.year) AS max_year
   FROM sediment s
-  JOIN sample s3 ON s3.sample_id = s.sample_id
-  WHERE s.param = '${selected_element.value}'
+  JOIN measurement_time m ON m.measurement_time_id = s.measurement_time_id
+  WHERE s.parameter = '${selected_element.value}'
 `)
 
-min_year = year_range_result[0].min_year ?? 1990
+min_year = year_range_result[0].min_year ?? 1984
 max_year = year_range_result[0].max_year ?? 2024
 
 viewof year_start = Inputs.range(
@@ -111,20 +110,19 @@ viewof year_end = Inputs.range(
   { label: "Year to:", step: 1, value: max_year }
 )
 
-// --- Country list (updates when element changes) ---
-country_result = db.query(`
-  SELECT DISTINCT p.country
+// --- Organization list (updates when element changes) ---
+organisation_result = db.query(`
+  SELECT DISTINCT organisation
   FROM sediment s
-  JOIN project p ON p.project_id = s.project_id
-  WHERE s.param = '${selected_element.value}'
-    AND p.country IS NOT NULL
-  ORDER BY p.country
+  JOIN station s2 ON s2.station_no = s.station_no
+  WHERE s.parameter = '${selected_element.value}'
+  AND s2.organisation IS NOT NULL
 `)
 
-country_options = ["All", ...country_result.map(r => r.country)]
+organisation_options = ["All", ...organisation_result.map(r => r.organisation)]
 
-viewof selected_country = Inputs.select(country_options, {
-  label: "Country:",
+viewof selected_organisation = Inputs.select(organisation_options, {
+  label: "Organisation:",
   value: "All"
 })
 ```
@@ -132,10 +130,10 @@ viewof selected_country = Inputs.select(country_options, {
 ```{ojs}
 //| panel: fill
 
-// Reusable country WHERE fragment — empty string when "All" is selected
-country_filter = selected_country === "All"
+// Reusable organisation WHERE fragment — empty string when "All" is selected
+organisation_filter = selected_organisation === "All"
   ? ""
-  : `AND p.country = '${selected_country}'`
+  : `AND s2.organisation = '${selected_organisation}'`
 
 // --- Value range query (for legend and colour scale) ---
 value_range_result = db.query(`
@@ -144,25 +142,25 @@ value_range_result = db.query(`
     MIN(avg_value) AS min_avg_value,
     MAX(avg_value) AS max_avg_value
   FROM (
-    SELECT
-      s.param,
-      AVG(
-        CASE
-          WHEN s.unit = 'mg/kg' THEN s.value * 1000
-          WHEN s.unit = 'ug/kg' THEN s.value
-          ELSE NULL
-        END
-      ) AS avg_value
-    FROM sediment s
-    JOIN site    s2 ON s2.site_id   = s.site_id
-    JOIN sample  s3 ON s3.sample_id = s.sample_id
-    JOIN project p  ON p.project_id = s.project_id
-    WHERE s.param = '${selected_element.value}'
-      AND s3.year BETWEEN ${year_start} AND ${year_end}
-      ${country_filter}
-    GROUP BY s.param, s2.latitude, s2.longitude
+      SELECT DISTINCT
+        s1.parameter AS param,
+          AVG(
+            CASE
+              WHEN s1.unit = 'mg/kg' THEN s1.measured_value * 1000
+              WHEN s1.unit = 'ug/kg' THEN s1.measured_value
+              ELSE NULL
+            END
+          ) AS avg_value
+      FROM sediment s1
+      JOIN station s2 ON s2.station_no = s1.station_no
+      JOIN survey s3 ON s3.survey_id = s1.survey_id
+      JOIN measurement_time m ON m.measurement_time_id  = s1.measurement_time_id
+      WHERE s1.parameter = '${selected_element.value}'
+       AND m.year BETWEEN ${year_start} AND ${year_end}
+           ${organisation_filter}
+        GROUP BY s1.parameter, s3.station_latitude, s3.station_longitude
   ) t
-  GROUP BY param
+  GROUP BY t.param
 `)
 
 value_min = value_range_result[0]?.min_avg_value ?? 0
@@ -171,25 +169,25 @@ value_max = value_range_result[0]?.max_avg_value ?? 1
 // --- Map data query ---
 map_data = db.query(`
   SELECT
-    s2.latitude,
-    s2.longitude,
+    s3.station_latitude AS latitude,
+    s3.station_longitude AS longitude,
     AVG(
       CASE
-        WHEN s.unit = 'mg/kg' THEN s.value * 1000
-        WHEN s.unit = 'ug/kg' THEN s.value
+        WHEN s1.unit = 'mg/kg' THEN s1.measured_value * 1000
+        WHEN s1.unit = 'ug/kg' THEN s1.measured_value
         ELSE NULL
       END
     ) AS avg_value_ug_per_kg
-  FROM sediment s
-  JOIN site    s2 ON s2.site_id   = s.site_id
-  JOIN sample  s3 ON s3.sample_id = s.sample_id
-  JOIN project p  ON p.project_id = s.project_id
-  WHERE s.param = '${selected_element.value}'
-    AND s3.year >= ${year_start}
-    AND s3.year <= ${year_end}
-    AND s.value IS NOT NULL
-    ${country_filter}
-  GROUP BY s2.latitude, s2.longitude
+  FROM sediment s1
+  JOIN station s2 ON s2.station_no = s1.station_no
+  JOIN survey s3 ON s3.survey_id = s1.survey_id
+  JOIN measurement_time m ON m.measurement_time_id  = s1.measurement_time_id
+  WHERE s1.parameter = '${selected_element.value}'
+    AND m.year >= ${year_start}
+    AND m.year <= ${year_end}
+    AND s1.measured_value IS NOT NULL
+    ${organisation_filter}
+  GROUP BY s3.station_latitude, s3.station_longitude
 `)
 
 // --- Colour scale using element + year + country specific range ---
@@ -252,14 +250,14 @@ function fmtVal(v) {
 
   const { _map: map, _markers: markers } = container
 
-  // Update legend — includes country in subtitle when filtered
+  // Update legend — includes organisation in subtitle when filtered
   const legendEl = map.getContainer().querySelector("#map-legend")
   if (legendEl) {
-    const countryLabel = selected_country === "All" ? "All countries" : selected_country
+    const organisationLabel = selected_organisation === "All" ? "All organisations" : selected_organisation
     legendEl.innerHTML = `
       <div class="legend-title">${selected_element.label}</div>
       <div style="font-size:11px;color:#555">
-        Avg (µg/kg) · ${year_start}–${year_end} · ${countryLabel}
+        Avg (µg/kg) · ${year_start}–${year_end} · ${organisationLabel}
       </div>
       <div class="legend-bar"></div>
       <div class="legend-labels">
@@ -298,7 +296,7 @@ function fmtVal(v) {
 
 map_data.length === 0
   ? md`*No data found for this selection.*`
-  : md`**${selected_element.label}** · ${year_start}–${year_end} · ${selected_country} · **${map_data.length}** locations · values in µg/kg`
+  : md`**${selected_element.label}** · ${year_start}–${year_end} · ${selected_organisation} · **${map_data.length}** locations · values in µg/kg`
 ```
 
 ```{ojs}
@@ -307,38 +305,38 @@ map_data.length === 0
 point_data = {
   const p = clicked_point
   if (!p) return []
-  // In the detail query the project alias is p1, so adjust the country filter alias
-  const detail_country_filter = selected_country === "All"
+  // In the detail query the project station is s2, so adjust the organisation filter alias
+  const detail_organisation_filter = selected_organisation === "All"
     ? ""
-    : `AND p1.country = '${selected_country}'`
+    : `AND s2.organisation = '${selected_organisation}'`
   return db.query(`
-    SELECT
-      p1.project                    AS Project,
-      s2.station                    AS Station,
-      ROUND(s2.latitude,  2)        AS Latitude,
-      ROUND(s2.longitude, 2)        AS Longitude,
-      CAST(s3.year AS TEXT)         AS Year,
-      s3.date                       AS Date,
-      s3.sample_type_description    AS Tool,
-      p2.param                      AS Param,
-      p2.param_description          AS Name,
-      s.sediment_no                 AS "No",
-      s.depth_from                  AS "From",
-      s.depth_to                    AS "To",
-      s.value                       AS Value,
-      s.unit                        AS Unit
-    FROM sediment s
-    JOIN project   p1 ON p1.project_id = s.project_id
-    JOIN site      s2 ON s2.site_id    = s.site_id
-    JOIN sample    s3 ON s3.sample_id  = s.sample_id
-    JOIN parameter p2 ON p2.param      = s.param
-    WHERE s.param  = '${selected_element.value}'
-      AND s3.year >= ${year_start}
-      AND s3.year <= ${year_end}
-      AND s2.longitude = ${p.lon}
-      AND s2.latitude  = ${p.lat}
-      ${detail_country_filter}
-    ORDER BY s3.year, s.sediment_no
+      SELECT
+        s2.organisation AS Organisation,
+        s2.project_affiliation AS Project,
+        s3.station_latitude AS Latitude,
+        s3.station_longitude AS Longitude,
+        CAST(CAST(m.year AS INTEGER) AS TEXT) AS Year,
+        s1.parameter AS Param,
+        UPPER(SUBSTR(p.parameter_name, 1, 1)) || LOWER(SUBSTR(p.parameter_name, 2)) AS Name
+        s1.sediment_no AS "No",
+        s4.layer_upper_boundary AS "From",
+        s4.layer_lower_boundary AS "To",
+        s1.measured_value AS Value,
+        s1.unit AS Unit
+      FROM sediment s1
+      JOIN station s2 ON s2.station_no = s1.station_no
+      JOIN survey s3 ON s3.survey_id = s1.survey_id
+      JOIN measurement_time m ON m.measurement_time_id  = s1.measurement_time_id
+      JOIN parameter p ON p.parameter  = s1.parameter
+      JOIN sample s4 ON s4.sample_no  = s1.sample_no
+      WHERE s1.parameter = '${selected_element.value}'
+        AND m.year >= ${year_start}
+        AND m.year <= ${year_end}
+        AND s3.station_longitude = ${p.lon}
+        AND s3.station_latitude  = ${p.lat}
+        AND s1.measured_value IS NOT NULL
+        ${detail_organisation_filter}
+      ORDER BY m.year, s1.sediment_no
   `)
 }
 
