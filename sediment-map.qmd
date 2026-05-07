@@ -146,8 +146,8 @@ value_range_result = db.query(`
         s1.parameter AS param,
           AVG(
             CASE
-              WHEN s1.unit = 'mg/kg' THEN s1.measured_value * 1000
-              WHEN s1.unit = 'ug/kg' THEN s1.measured_value
+              WHEN s1.unit = 'mg/kg' THEN s1.measured_value
+              WHEN s1.unit = 'ug/kg' THEN s1.measured_value / 1000
               ELSE NULL
             END
           ) AS avg_value
@@ -173,11 +173,11 @@ map_data = db.query(`
     s3.station_longitude AS longitude,
     AVG(
       CASE
-        WHEN s1.unit = 'mg/kg' THEN s1.measured_value * 1000
-        WHEN s1.unit = 'ug/kg' THEN s1.measured_value
+        WHEN s1.unit = 'mg/kg' THEN s1.measured_value
+        WHEN s1.unit = 'ug/kg' THEN s1.measured_value / 1000
         ELSE NULL
       END
-    ) AS avg_value_ug_per_kg
+    ) AS avg_value
   FROM sediment s1
   JOIN station s2 ON s2.station_no = s1.station_no
   JOIN survey s3 ON s3.survey_id = s1.survey_id
@@ -200,9 +200,7 @@ function markerColor(v) {
 }
 
 function fmtVal(v) {
-  return v == null ? "N/A"
-    : v >= 1000  ? (v / 1000).toFixed(0) + " mg/kg"
-    : v.toFixed(0) + " µg/kg"
+  return v == null ? "N/A" : v.toFixed(0) + " mg/kg"
 }
 
 // --- Render / update map ---
@@ -257,7 +255,7 @@ function fmtVal(v) {
     legendEl.innerHTML = `
       <div class="legend-title">${selected_element.label}</div>
       <div style="font-size:11px;color:#555">
-        Avg (µg/kg) · ${year_start}–${year_end} · ${organisationLabel}
+        Avg (mg/kg) · ${year_start}–${year_end} · ${organisationLabel}
       </div>
       <div class="legend-bar"></div>
       <div class="legend-labels">
@@ -272,10 +270,10 @@ function fmtVal(v) {
   mutable clicked_point = null
 
   for (const d of map_data) {
-    if (d.avg_value_ug_per_kg == null) continue
+    if (d.avg_value == null) continue
     const circle = L.circleMarker([d.latitude, d.longitude], {
       radius:      7,
-      fillColor:   markerColor(d.avg_value_ug_per_kg),
+      fillColor:   markerColor(d.avg_value),
       color:       "#333",
       weight:      0.8,
       opacity:     1,
@@ -283,7 +281,7 @@ function fmtVal(v) {
     })
     circle.bindTooltip(
       `<b>${selected_element.label}</b><br>
-       Avg: ${fmtVal(d.avg_value_ug_per_kg)}<br>
+       Avg: ${fmtVal(d.avg_value)}<br>
        (${year_start}–${year_end})`,
       { sticky: true }
     )
@@ -296,7 +294,7 @@ function fmtVal(v) {
 
 map_data.length === 0
   ? md`*No data found for this selection.*`
-  : md`**${selected_element.label}** · ${year_start}–${year_end} · ${selected_organisation} · **${map_data.length}** locations · values in µg/kg`
+  : md`**${selected_element.label}** · ${year_start}–${year_end} · ${selected_organisation} · **${map_data.length}** locations · values in mg/kg`
 ```
 
 ```{ojs}
@@ -317,7 +315,7 @@ point_data = {
         s3.station_longitude AS Longitude,
         CAST(CAST(m.year AS INTEGER) AS TEXT) AS Year,
         s1.parameter AS Param,
-        UPPER(SUBSTR(p.parameter_name, 1, 1)) || LOWER(SUBSTR(p.parameter_name, 2)) AS Name
+        UPPER(SUBSTR(p.parameter_name, 1, 1)) || LOWER(SUBSTR(p.parameter_name, 2)) AS Name,
         s1.sediment_no AS "No",
         s4.layer_upper_boundary AS "From",
         s4.layer_lower_boundary AS "To",

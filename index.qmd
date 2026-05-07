@@ -72,6 +72,7 @@ Inputs.table(counts_wide, {
 After creating the ER (Entity–Relationship) diagram, the tables were implemented in a single SQLite file containing 10 tables. All required data were extracted from the MUDAB export file and imported into the corresponding tables.
 
 - See the [DB Schema](./db-schema.qmd) page for details on the database architecture.
+- See the [Data Preparation](./data-preparation.qmd) page for the data preparation process used prior to importing the MUDAB dataset.
 
 ## Geospatial Analysis
 
@@ -90,5 +91,5 @@ Data can be exported for both exploration and submission purposes.
 ## Tools
 
 - See the [Pilot DB Viewer](./pilot-db-viewer.qmd) page for a read-only view of the pilot database.
-- See the [Code Lookup Browser](./code-lookup-browser.qmd) page for ICES vocabulary codes used in the database.
+- See the [Code Lookup Browser](./code-lookup-browser.qmd) page for MUDAB/ICES vocabulary codes used in the database.
 - See the [Sediment Trace Element Map](./sediment-map.qmd) page for an interactive map view of the trace elements.
