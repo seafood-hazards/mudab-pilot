@@ -1,6 +1,6 @@
 # MUDAB Pilot Database
 
-[![DOI](https://zenodo.org/badge/1227957054.svg)](https://doi.org/10.5281/zenodo.20036772)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.20072773.svg)](https://doi.org/10.5281/zenodo.20072773)
 
 This repository contains the source Quarto Markdown documents for the [Marine Environmental Database (MUDAB)](https://www.mudab.de/en) website.
 
