@@ -30,3 +30,10 @@ Use the ``Render Website`` option in RStudio.
 
 > [!Note]
 > The website deployed on GitHub Pages is automatically built using the same workflow and environment configuration.
+
+## Branching model
+
+This repository follows [Gitflow](https://nvie.com/posts/a-successful-git-branching-model/):
+`main` holds releases, `develop` is the integration branch, and work happens on
+`feature/*` / `release/*` branches. Branches are merged directly (no pull
+requests) and deleted once merged.
