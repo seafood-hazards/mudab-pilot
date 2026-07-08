@@ -37,6 +37,14 @@ website:
         menu:
           - text: "Export to Tabular File"
             href: data-export.qmd
+          - text: "EFSA Format v1"
+            href: efsa-format.qmd
+          - text: "EFSA Submission v1"
+            href: efsa-submission.qmd
+          - text: "EFSA Format v2"
+            href: efsa-format-v2.qmd
+          - text: "EFSA Submission v2"
+            href: efsa-submission-v2.qmd
       - text: "Tools"
         menu:
           - text: "Pilot DB Viewer"

@@ -87,6 +87,8 @@ To facilitate efficient core and sample selection, distances to the nearest coas
 Data can be exported for both exploration and submission purposes.
 
 - See the [Export to Tabular File](./data-export.qmd) page for a description of a single tabular file format (`.tsv.gz`) that is extracted and merged from all database tables for data exploration.
+- See the [EFSA Format v1](./efsa-format.qmd) and [EFSA Format v2](./efsa-format-v2.qmd) pages for descriptions of the EFSA submission file structures.
+- See the [EFSA Submission v1](./efsa-submission.qmd) and [EFSA Submission v2](./efsa-submission-v2.qmd) pages for the mapping between the database fields and the EFSA submission formats.
 
 ## Tools
 
