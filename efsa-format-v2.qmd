@@ -1,0 +1,160 @@
+---
+title: "EFSA Format v2"
+subtitle: "Data format of the FHF marine sediment data model"
+---
+
+```{css, echo=FALSE}
+th {
+  white-space: nowrap;
+}
+```
+
+The page presents the column format of the FHF marine sediment data model for submitting background sediment trace element data.
+
+```{r}
+library(dplyr)
+library(tibble)
+library(knitr)
+
+readMe <- tribble(
+  ~`Field Label`,       ~`Field Name`,                                                    ~Description,                                                          ~Catalogue,          ~Optionality,
+  "sampleId",           "Sample Unique Identifier",                                       "Sample identification according to the data provider.",               NA,                  "Recommended",
+  "samplingStrategy",   "Sampling Strategy (yes/no)",                                     "Whether a defined sampling strategy was applied.",                    "yesNoMaybe",        "Recommended",
+  "pristine",           "Pristine",                                                       "Whether the area sampled was unaffected by pollution.",               "yesNoMaybe",        "Mandatory",
+  "collDate",           "Date of Collection",                                              "Date of sample collection.",                                          NA,                  "Mandatory",
+  "placeColl",          "Place of Collection",                                             "Sea area where the sample was collected.",                            "seas",              "Mandatory",
+  "lat",                "Geographic Coordinate Latitude",                                  "Latitude in decimal degrees.",                                        NA,                  "Recommended",
+  "lon",                "Geographic Coordinate Longitude",                                 "Longitude in decimal degrees.",                                       NA,                  "Recommended",
+  "sedDepth",           "Depth of Sediment Sample (below sediment level)",                "Depth category of the sample below the sediment surface.",            "sedDepth",          "Mandatory",
+  "traceEl",            "Trace Element",                                                   "Trace element measured.",                                             NA,                  "Mandatory",
+  "value",              "Measured Value",                                                  "Analytical result of the concentration.",                             NA,                  "Mandatory",
+  "sd",                 "SD",                                                              "Standard deviation of the measurement.",                              NA,                  "Optional",
+  "unit",               "Unit (e.g. mg/kg)",                                               "Unit of the measured value.",                                         NA,                  "Mandatory",
+  "resultType",         "Expression of Result Type (e.g. wet weight or dry weight)",       "Whether the result is expressed as wet weight or dry weight.",        NA,                  "Recommended",
+  "moisture",           "% Moisture",                                                      "Moisture content of the sample (%).",                                 NA,                  "Recommended",
+  "convertedValue",     "Converted Values into mg/kg Dry Weight",                          "Measured value converted to mg/kg dry weight.",                       NA,                  "Mandatory",
+  "extractionClass",    "Extraction Class",                                                "Strength of the extraction method applied.",                          "extractionClass",   "Mandatory",
+  "methAn",             "Analytical Method",                                               "Method used to measure the concentration.",                           "methAn",            "Mandatory",
+  "validatedMethod",    "Validated Method (yes/no)",                                       "Whether the analytical method is validated.",                         "yesNoMaybe",        "Recommended",
+  "LOD",                "LOD",                                                             "Limit of detection.",                                                 NA,                  "Mandatory",
+  "LODUnit",            "Units of the LOD",                                                "Unit of the limit of detection.",                                     NA,                  "Mandatory",
+  "LOQ",                "LOQ",                                                             "Limit of quantification.",                                            NA,                  "Recommended",
+  "LOQUnit",            "Units of the LOQ",                                                "Unit of the limit of quantification.",                                NA,                  "Recommended",
+  "accLab",             "Accredited Laboratory/Quality Control (yes/no)",                  "Whether the laboratory is accredited.",                               "yesNoMaybe",        "Mandatory",
+  "phSed",              "pH of Porewater",                                                 "Measured pH of porewater in the sediment.",                           NA,                  "Optional",
+  "sieve",              "Sieve <63µm",                                                     "Whether the sample was sieved at <63µm.",                             "yesNoNotReported",  "Mandatory",
+  "bulkAnalysis",       "Bulk Analysis",                                                   "Whether bulk analysis was performed.",                                "yesNoNotReported",  "Mandatory",
+  "ocSed",              "Organic Matter Content Sediment (TOC%)",                          "Organic matter content of the sediment (TOC%).",                      NA,                  "Mandatory",
+  "notes",              "Notes",                                                           "Open notes field.",                                                   NA,                  "Recommended"
+)
+
+readMe <- readMe %>%
+  mutate(across(where(is.character), ~coalesce(.x, "")))
+
+readMe <- readMe %>%
+  mutate(Catalogue = ifelse(Catalogue != "", paste0("<a href='#", Catalogue, "'>", Catalogue, "</a>"), ""))
+
+yesNoMaybe <- tribble(
+  ~`Value`,
+  "yes",
+  "no",
+  "maybe"
+)
+
+seas <- tribble(
+  ~`Sea Name`,
+  "Adriatic Sea",
+  "Aegean Sea",
+  "Alboran Sea (South West Mediterranean)",
+  "Arctic Ocean",
+  "Baltic Sea",
+  "Black Sea",
+  "Cantabrian Sea",
+  "East Atlantic",
+  "English Channel",
+  "Golf of Bothnia",
+  "Golf of Finland",
+  "Ionian Sea",
+  "Ligurian Sea (North Tyrrhenian Sea)",
+  "Marmara Sea",
+  "North Sea",
+  "Norwegian Sea",
+  "South East Mediterranean",
+  "Tyrrhenian Sea",
+  "West Mediterranean"
+)
+
+sedDepth <- tribble(
+  ~`Value`,
+  "0-5cm",
+  "5-40cm",
+  ">40cm"
+)
+
+extractionClass <- tribble(
+  ~`Value`,              ~Description,
+  "1 - Strong",          "Strong extraction",
+  "2 - Milder",          "Milder extraction",
+  "3 - Weak or none",    "Weak or no extraction"
+)
+
+methAn <- tribble(
+  ~`Method`,
+  "ICP-AES",
+  "ICP-MS",
+  "AAS",
+  "WD-XRFS",
+  "Other"
+)
+
+yesNoNotReported <- tribble(
+  ~`Value`,
+  "yes",
+  "no",
+  "not reported"
+)
+```
+
+## Column Format
+
+```{r}
+knitr::kable(readMe, escape = FALSE)
+```
+
+## Catalogue Data
+
+### yesNoMaybe {#yesNoMaybe}
+
+```{r}
+yesNoMaybe
+```
+
+### seas {#seas}
+
+```{r}
+seas
+```
+
+### sedDepth {#sedDepth}
+
+```{r}
+sedDepth
+```
+
+### extractionClass {#extractionClass}
+
+```{r}
+extractionClass
+```
+
+### methAn {#methAn}
+
+```{r}
+methAn
+```
+
+### yesNoNotReported {#yesNoNotReported}
+
+```{r}
+yesNoNotReported
+```
