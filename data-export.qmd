@@ -15,7 +15,7 @@ The data file was created for the initial analysis using the MUDAB data.
 
 A tab-delimited file containing all major data from the database is available for download at the following location.
 
- * [pilot_mudab.tsv.gz](https://github.com/seafood-hazards/mudab-pilot/releases/download/v0.1.0/pilot_mudab.tsv.gz)
+ * [pilot_mudab.tsv.gz](https://github.com/seafood-hazards/mudab-pilot/releases/download/v0.1.2/pilot_mudab.tsv.gz)
 
 ## Data File Summary
 
