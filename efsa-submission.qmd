@@ -1,6 +1,6 @@
 ---
 title: "EFSA Submission v1"
-subtitle: "Data export of trace elements for EFDA submission"
+subtitle: "Data export of trace elements for EFSA submission"
 ---
 
 ```{css, echo=FALSE}
