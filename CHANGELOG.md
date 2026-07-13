@@ -6,6 +6,13 @@ As this project is still in active development, it does not yet strictly adhere 
 
 ## [Unreleased]
 
+## [0.1.4] - 2026-07-13
+### Added
+- EFSA Format v1/v2 and EFSA Submission v1/v2 pages under Data Export, mapping
+  pilot database fields to the EFSA submission formats
+### Fixed
+- Typos in EFSA pages ("EFDA" -> "EFSA", duplicated "the")
+
 ## [0.1.2] - 2026-05-07
 ### Fixed
 - average calculation for the interactive map

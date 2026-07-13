@@ -1,0 +1,239 @@
+---
+title: "EFSA Format v1"
+subtitle: "Data format of the EFSA reporting tool on trace elements"
+---
+
+```{css, echo=FALSE}
+th {
+  white-space: nowrap;
+}
+```
+
+The page presents the data format of the EFSA reporting tool necessary for submitting the background sediment data.
+
+```{r}
+library(dplyr)
+library(tibble)
+library(knitr)
+
+readMe <- tribble(
+  ~`Field Label`,     ~`Field Name`,                               ~Description,                                                                                      ~Catalogue,   ~Optionality,
+  "sampleId",         "Sample Identifier",                         "Sample identification according to the data provider.",                                           NA,           "Mandatory",
+  "recId",            "Record Identifier",                         "Automatically generated unique identifier by concatenation of sample identifier and speciation.", NA,           "Mandatory",
+  "envComp",          "Environmental Compartment",                 "Select the compartment in which the sample was collected.",                                       "envComp",    "Mandatory",
+  "pristineLoc",      "Pristine Location",                         "YES/NO if area sampled was affected by pollution.",                                              "yesNo",      "Mandatory",
+  "sampleLocGC",      "Sampling Location Geographical Coordinates","Latitude and longitude in decimal degrees.",                                                      NA,           "Mandatory",
+  "sampleLocCM",      "Sampling Location Country, Municipality",   "Country and municipality of sampling location.",                                                  NA,           "Mandatory",
+  "sampleDate",       "Sampling Date",                             "Date of sample collection.",                                                                      NA,           "Mandatory",
+  "traceEl",          "Trace Element",                             "Trace element measured.",                                                                         "traceEl",    "Mandatory",
+  "spec",             "Speciation",                                "Oxidation state of the trace element.",                                                           "spec",       "Mandatory",
+  "conc",             "Measured Concentration",                    "Analytical result of concentration.",                                                             NA,           "Mandatory",
+  "methAn",           "Method of Analysis",                        "Method used to measure concentration.",                                                           "methAn",     "Mandatory",
+  "unit",             "unit",                                      "Unit of the relevant data element.",                                                              "unit",       "Mandatory",
+  "weight",           "Expression of product",                     "Dry weight or wet weight.",                                                                       "weight",     "Dependent Mandatory",
+  "LOD",              "Limit of Detection",                        "Limit of detection.",                                                                             NA,           "Optional",
+  "LOQ",              "Limit of Quantification",                   "Limit of quantification.",                                                                        NA,           "Optional",
+  "accLab",           "Accredited Laboratory",                     "YES/NO if laboratory is accredited.",                                                             "yesNo",      "Optional",
+  "phSed",            "pH of porewater of the Sediment",           "Measured pH of porewater in sediment.",                                                           NA,           "Optional",
+  "TextureSedClay",   "Texture of the Clay Sediment",               "Clay fraction (% dw).",                                                                           NA,           "Optional",
+  "TextureSedSilt",   "Texture of the Silt Sediment",               "Silt fraction (% dw).",                                                                           NA,           "Optional",
+  "TextureSedSand",   "Texture of the Sand Sediment",               "Sand fraction (% dw).",                                                                           NA,           "Optional",
+  "ocSed",            "Organic Content of the Sediment",           "Organic matter in sediment (% dw).",                                                              NA,           "Optional",
+  "phWater",          "pH of Water",                               "Measured pH of water.",                                                                           NA,           "Optional",
+  "hardWat",          "Hardness of Water",                         "Water hardness category.",                                                                        "hardWater",  "Optional",
+  "DOC",              "Dissolved Organic Carbon of Water",         "Dissolved organic carbon (mg/L).",                                                                NA,           "Optional",
+  "publicData",       "Data publicly available",                   "YES/NO if data are publicly available.",                                                          "yesNo",      "Optional",
+  "refPublication",   "Reference to the published data",           "Reference to publication.",                                                                       NA,           "Optional",
+  "comments",         "Comments",                                  "Open comments field.",                                                                            NA,           "Optional"
+)
+
+readMe <- readMe %>%
+  mutate(
+    across(
+      where(is.character),
+      ~coalesce(.x, "")
+    )
+  )
+
+readMe <- readMe %>% 
+  mutate( Catalogue = ifelse( Catalogue != "", paste0("<a href='#", Catalogue, "'>", Catalogue, "</a>"), "" ) )
+
+envComp <- tribble(
+  ~`Term Name`,          ~`Term Code`,          ~Description,                                               ~Note,
+  "soil",                "A16PE",               "Land",                                                     "Group covering the samples for analysis of different types of lands and grounds.",
+  "freshwater",          "A0F7G",               "Naturally occurring freshwater",                            "Freshwater excluding sea- and brackish water.",
+  "freshwater sediment", "A198T#F34.A0F7G",     "Sediment, HOST-SAMPLED = Naturally occurring freshwater", "Naturally occurring solid material transported by natural forces.",
+  "marine sediment",     "A198T#F34.A16YY",     "Sediment, HOST-SAMPLED = Seawater",                        "Naturally occurring solid material transported by natural forces."
+)
+
+yesNo <- tribble(
+  ~`Term Name`, ~`Term Code`,
+  "No",         "N",
+  "Yes",        "Y"
+)
+
+traceEl <- tribble(
+  ~`Term Name`, ~`Term Code`,
+  "Co",         "RF-00000161-CHE",
+  "Cu",         "RF-00000167-CHE",
+  "I",          "RF-00000050-CHE",
+  "Mn",         "RF-00000176-CHE",
+  "Mo",         "RF-00000179-CHE",
+  "Se",         "RF-00000184-CHE",
+  "Zn",         "RF-00000205-CHE"
+)
+
+spec <- tribble(
+  ~`Term Name`, ~`Term Code`,
+  "Co (Total)", "RF-00000162-CHE",
+  "Co(+II)",    NA,
+  "Co(+III)",   NA,
+  "Other",      NA,
+  "Cu (Total)", "RF-00000168-CHE",
+  "Cu(+I)",     NA,
+  "Cu(+II)",    NA,
+  "Other",      NA,
+  "I (Total)",  "check CAS number, ECHA",
+  "I(-I)",      "RF-00000310-NTR",
+  "iodide",     NA,
+  "I(+I)",      NA,
+  "I(+III)",    "RF-00000049-CHE",
+  "Iodates",    NA,
+  "I(+V)",      NA,
+  "I(+VII)",    NA,
+  "Other",      NA,
+  "Mn (Total)", "RF-00000177-CHE",
+  "Mn(+II)",    NA,
+  "Mn(+IV)",    NA,
+  "Mn(+VI)",    NA,
+  "Mn(+VII)",   NA,
+  "Other",      NA,
+  "Mo (Total)", "RF-00000180-CHE",
+  "Mo(+IV)",    NA,
+  "Mo(+VI)",    NA,
+  "Other",      NA,
+  "Se (Total)", "RF-00000186-CHE",
+  "Se(-II)",    NA,
+  "Se(+II)",    NA,
+  "Se(+IV)",    NA,
+  "Other",      NA,
+  "Zn (Total)", "RF-00000206-CHE",
+  "Zn(+II)",    NA,
+  "Other",      NA
+)
+
+spec <- spec %>%
+  mutate(
+    across(
+      where(is.character),
+      ~coalesce(.x, "")
+    )
+  )
+
+unit <- tribble(
+  ~`Term Name`, ~`Term Code`, ~`Data Element (Field Label)`,
+  "mg/kg",      "G061A",      "conc",
+  "ng/kg",      "G077A",      "conc",
+  "%",          "G138A",      "conc",
+  "mol",        "G119A",      "conc",
+  "mmol",       "G115A",      "conc",
+  "%",          "G138A",      "conc",
+  "%",          "G138A",      "ocSed",
+  "mg/L",       "G062A",      "DOC"
+)
+
+weight <- tribble(
+  ~`Term Name`, ~`Term Code`, ~Note,
+  "dw",         "B002A",      "Dry matter, dry weight",
+  "ww",         "B001A",      NA
+)
+
+hardWater <- tribble(
+  ~`Term Name`, ~Description,
+  "Soft",       "0–60 mg CaCO3/L or 0–0.6 mmol/L or 0–3.37 dGH",
+  "Moderate",   "61–120 mg CaCO3/L or 0.61–1.20 mmol/L or 3.38–6.74 dGH",
+  "Hard",       "121–180 mg CaCO3/L or 1.21–1.80 mmol/L or 6.75–10.11 dGH",
+  "Very hard",  "≥181 mg CaCO3/L or ≥1.81 mmol/L or ≥10.12 dGH"
+)
+
+methAn <- tribble(
+  ~`Term Name`,     ~`Term Code`, ~Note,
+  "ICP-MS",         "F064A",      "Inductively coupled plasma mass spectrometry",
+  "ICP-AES",        "F057A",      "Inductively coupled plasma atomic emission spectroscopy",
+  "FAAS",           "F350A",      "Flame atomic absorption spectrometry",
+  "ETAAS (GFAAS)",  "F054A",      "Electrothermal atomic absorption spectrometry",
+  "WD-XRFS",        "F832A",      "Wavelength Dispersive X-Ray Fluorescence Spectroscopy",
+  "IC-UV/VIS",      "F833A",      "Ion Chromatography UV/VIS detection",
+  "HPLC-ICP-MS",    "F029A",      "High performance liquid chromatography ICP-MS",
+  "GC-ICP-MS",      "F366A",      "Gas Chromatography ICP-MS",
+  "Other",          NA,           NA
+)
+
+```
+
+## Report on Trace Elements {#efsa-report}
+
+The details of EFSA submission and their objectives are described in this [call](https://www.efsa.europa.eu/en/call/call-data-determination-natural-background-concentrations-trace-elements-co-cu-i-mn-mo-se-or) from EFSA.
+
+*   **Data on** natural background concentrations of trace elements (cobalt, copper, iodine, manganese, molybdenum, selenium, and zinc)
+*   **Trace element concentrations** in marine sediment along the coasts of EU, EFTA, and EU candidate countries (including fjords and estuaries)
+*   **Samples collected** within the last 15 years (2009 to present)
+*   **Samples from** pristine areas (defined as areas unaffected by point or diffuse pollution sources)
+*   **Supporting metadata** regarding porewater pH, sediment texture (% clay <2 µm, % silt 2–63 µm, % sand >63 µm), and organic matter content (%)
+
+## Column Format
+
+```{r}
+knitr::kable( readMe, escape = FALSE )
+```
+
+
+## Catalogue Data
+
+### envComp {#envComp}
+
+```{r}
+envComp
+```
+
+### yesNo {#yesNo}
+
+```{r}
+yesNo
+```
+
+### traceEl {#traceEl}
+
+```{r}
+traceEl
+```
+
+### spec {#spec}
+
+```{r}
+spec
+```
+
+### methAn {#methAn}
+
+```{r}
+methAn
+```
+
+### unit {#unit}
+
+```{r}
+unit
+```
+
+### weight {#weight}
+
+```{r}
+weight
+```
+
+### hardWater {#hardWater}
+
+```{r}
+hardWater
+```
