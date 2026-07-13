@@ -1,6 +1,6 @@
 ---
 title: "EFSA Format v1"
-subtitle: "Data format of the EFDA reporting tool on trace elements"
+subtitle: "Data format of the EFSA reporting tool on trace elements"
 ---
 
 ```{css, echo=FALSE}
@@ -9,7 +9,7 @@ th {
 }
 ```
 
-The page presents the the data format of the EFDA reporting tool necessary for submitting the background sediment data.
+The page presents the data format of the EFSA reporting tool necessary for submitting the background sediment data.
 
 ```{r}
 library(dplyr)
