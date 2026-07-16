@@ -6,6 +6,12 @@ As this project is still in active development, it does not yet strictly adhere 
 
 ## [Unreleased]
 
+## [0.1.5] - 2026-07-16
+### Changed
+- Updated DB and datafile version references to v0.1.4
+### Fixed
+- Survey table section heading in db-schema page
+
 ## [0.1.4] - 2026-07-13
 ### Added
 - EFSA Format v1/v2 and EFSA Submission v1/v2 pages under Data Export, mapping
