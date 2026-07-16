@@ -137,7 +137,7 @@ tribble(
 
 ---
 
-## s
+## survey
 
 Survey and voyage metadata linking measurements to spatial and temporal context.
 
