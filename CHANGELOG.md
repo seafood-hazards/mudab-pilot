@@ -6,6 +6,10 @@ As this project is still in active development, it does not yet strictly adhere 
 
 ## [Unreleased]
 
+## [0.1.7] - 2026-07-16
+### Added
+- Schema diagram image for the slim DB schema page
+
 ## [0.1.6] - 2026-07-16
 ### Added
 - Slim DB schema page (`db-schema-slim.qmd`) documenting a common
