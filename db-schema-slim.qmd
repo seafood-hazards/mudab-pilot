@@ -15,7 +15,7 @@ The page shows the schema diagram and table definitions for the slim database, d
 
 The slim schema contains seven tables. The hierarchy flows from `dataset` and `site` through `event` and `subsample` to `measurement`. The `element` table serves as a lookup for both `method` and `measurement` via the `symbol` key.
 
-![](./image/ices_dome_slim.webp){.zoomable}
+![](./image/mudab_slim.webp){.zoomable}
 
 ::: {.callout-warning}
 The `symbol` column in `measurement` is an intentional denormalization — it is derivable via `method_id → method.symbol` but is retained as a key for query efficiency.
