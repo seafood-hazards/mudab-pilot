@@ -71,8 +71,9 @@ Inputs.table(counts_wide, {
 
 After creating the ER (Entity–Relationship) diagram, the tables were implemented in a single SQLite file containing 10 tables. All required data were extracted from the MUDAB export file and imported into the corresponding tables.
 
-- See the [DB Schema](./db-schema.qmd) page for details on the database architecture.
-- See the [Data Preparation](./data-preparation.qmd) page for the data preparation process used prior to importing the MUDAB dataset.
+- See the [DB Schema (Full)](./db-schema.qmd) page for details of the full database architecture.
+- See the [Data Preparation](./data-preparation.qmd) page for the data preparation process used prior to importing the ICES-DOME dataset.
+- See the [DB Schema (Slim)](./db-schema-slim.qmd) page for the common multi-source schema.
 
 ## Geospatial Analysis
 
