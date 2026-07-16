@@ -1,5 +1,5 @@
 ---
-title: "DB Schema"
+title: "DB Schema (Full)"
 subtitle: A proposed database design based on MUDAB Data
 ---
 

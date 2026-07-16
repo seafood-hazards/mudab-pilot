@@ -6,6 +6,12 @@ As this project is still in active development, it does not yet strictly adhere 
 
 ## [Unreleased]
 
+## [0.1.6] - 2026-07-16
+### Added
+- Slim DB schema page (`db-schema-slim.qmd`) documenting a common
+  cross-project schema (dataset, site, event, subsample, measurement,
+  method, element tables), converted from the full MUDAB schema
+
 ## [0.1.5] - 2026-07-16
 ### Changed
 - Updated DB and datafile version references to v0.1.4
