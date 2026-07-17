@@ -30,7 +30,7 @@ Vocabulary reference table mapping category codes and individual codes to their 
 ```{r}
 tribble(
   ~Name,             ~`Data Type`, ~PK,  ~FK,  ~`NA Allowed`, ~Description,                                                                      ~`Look Up`,
-  "category_code",   "TEXT",       "✓",  "",    FALSE,         "Primary Key. Category code identifying the vocabulary domain (e.g. ICESCL_MATRIX.", "",
+  "category_code",   "TEXT",       "✓",  "",    FALSE,         "Primary Key. Category code identifying the vocabulary domain (e.g. ICESCL_MATRIX).", "",
   "category_name",   "TEXT",       "",   "",    TRUE,          "Human-readable name of the category.",                                             "",
   "code",            "TEXT",       "✓",  "",    FALSE,         "Primary Key. Individual code value within the category.",                          "",
   "code_name",       "TEXT",       "",   "",    TRUE,          "Human-readable name or description of the individual code.",                       ""
