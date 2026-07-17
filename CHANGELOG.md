@@ -6,6 +6,10 @@ As this project is still in active development, it does not yet strictly adhere 
 
 ## [Unreleased]
 
+## [0.1.8] - 2026-07-17
+### Fixed
+- Missing closing parenthesis in db-schema page's code_lookup table description
+
 ## [0.1.7] - 2026-07-16
 ### Added
 - Schema diagram image for the slim DB schema page
