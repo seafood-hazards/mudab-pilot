@@ -133,8 +133,7 @@ subsample_tbl <- tribble(
   "subsample_id", "INTEGER",    "✓", "",            "Primary Key. Unique subsample identifier.",
   "event_id",     "INTEGER",    "",  "",            "Foreign Key to Event table.",
   "depth_from",   "REAL",       "",  "✓",           "Upper depth boundary of the sample interval (cm).",
-  "depth_to",     "REAL",       "",  "✓",           "Lower depth boundary of the sample interval (cm).",
-  "matrix",       "TEXT",       "",  "✓",           "Matrix being analyzed."
+  "depth_to",     "REAL",       "",  "✓",           "Lower depth boundary of the sample interval (cm)."
 )
 
 subsample_tbl
@@ -154,6 +153,7 @@ measurement_tbl <- tribble(
   "value",           "REAL",       "",  "",            "Measured concentration value.",
   "unit",            "TEXT",       "",  "✓",           "Unit of measurement (e.g., mg/kg).",
   "basis",           "TEXT",       "",  "✓",           "Basis of measurement, e.g. D (dry weight).",
+  "matrix",          "TEXT",       "",  "✓",           "Matrix being analyzed.",
   "qflag",           "TEXT",       "",  "✓",           "Data quality flag (may be multi-value, e.g. <).",
   "method_id",       "INTEGER",    "",  "",            "Foreign Key to Method table."
 )
