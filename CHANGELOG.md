@@ -6,6 +6,11 @@ As this project is still in active development, it does not yet strictly adhere 
 
 ## [Unreleased]
 
+## [0.1.9] - 2026-07-21
+### Changed
+- Moved the `matrix` column from the subsample table to the measurement table
+  in the slim DB schema, and updated the schema diagram accordingly
+
 ## [0.1.8] - 2026-07-17
 ### Fixed
 - Missing closing parenthesis in db-schema page's code_lookup table description
