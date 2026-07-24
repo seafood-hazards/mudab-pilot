@@ -6,6 +6,10 @@ As this project is still in active development, it does not yet strictly adhere 
 
 ## [Unreleased]
 
+## [0.1.10] - 2026-07-24
+### Added
+- Database Downloads page with links to the full and slim SQLite database files
+
 ## [0.1.9] - 2026-07-21
 ### Changed
 - Moved the `matrix` column from the subsample table to the measurement table
