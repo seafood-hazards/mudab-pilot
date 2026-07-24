@@ -15,6 +15,7 @@ monitoring dataset. Deployed to GitHub Pages.
 - `index.qmd`, `db-schema.qmd`, `data-preparation.qmd` — DB design docs
 - `distance-to-coast.qmd`, `distance-interactive-map.qmd`, `location-names.qmd` — geospatial analysis
 - `data-export.qmd` — flat `.tsv.gz` export docs
+- `database-downloads.qmd` — SQLite DB file download links (full + slim schema)
 - `pilot-db-viewer.qmd`, `code-lookup-browser.qmd`, `sediment-map.qmd` — interactive DB tools
 - `_db-setup.qmd` — shared OJS include that opens the SQLite DB
 - `download_resources.R` — pre-render script fetching the DB + sql.js/stratum-sqlite libs
