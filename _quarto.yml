@@ -27,6 +27,8 @@ website:
             href: data-preparation.qmd
           - text: "DB Schema (Slim)"
             href: db-schema-slim.qmd
+          - text: "Database Downloads"
+            href: database-downloads.qmd
       - text: "Geospatial Analysis"
         menu:
           - text: "Distance to Coast"
