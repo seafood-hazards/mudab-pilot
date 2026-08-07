@@ -9,11 +9,17 @@ The distance data is available in the `dist_to_coast` column of the [survey](db-
 
 ## Methods
 
-Coastline data were derived from the **Global Self-consistent, Hierarchical, High-resolution Geography** ([GSHHG](https://www.soest.hawaii.edu/pwessel/gshhg/)) database. High-resolution shoreline polygons were extracted for the region covering European countries. The coastline geometry was cleaned and filtered to ensure topological validity before calculation.
+The distance is computed by [seastamp](https://github.com/AIQC-Hub/seastamp), the command line tool that annotates locations for every stage of the pipeline. Using one tool throughout means the pilot values agree with the ones the later generations carry, rather than differing in detail.
 
-To ensure accurate measurements at high latitudes, where standard global projections (like Mercator) distort distances, all spatial data were projected to the **ETRS89-extended Lambert Azimuthal Equal Area projection (EPSG:3035)**. This Coordinate Reference System is the standard for pan-European statistical mapping and minimizes distortion across the region. The shortest Euclidean distance from each sampling site to the nearest European coastline geometry was then calculated in meters.
+* **Shoreline data:** the **Global Self-consistent, Hierarchical, High-resolution Geography** ([GSHHG](https://www.soest.hawaii.edu/pwessel/gshhg/)) database at full resolution, the most detailed of its five levels.
+* **Projection:** a **Lambert Azimuthal Equal Area** projection centred on the data. seastamp derives the extent from the sampling points themselves rather than applying a fixed global projection.
+* **De-duplication:** coordinates are rounded to three decimal places before lookup, so surveys repeated at one position are computed once.
+* **Result:** the shortest distance from the survey position to the nearest shoreline polygon, in kilometres.
 
-The calculation was performed using the [sf](https://cran.r-project.org/web/packages/sf/index.html) library in R.
+::: {.callout-note}
+### Recalculated at v0.1.12
+These values were previously calculated in R with the [sf](https://cran.r-project.org/web/packages/sf/index.html) library, against a GSHHG extract cropped to Europe and projected to EPSG:3035. Both approaches use GSHHG, so the distances moved only slightly: across the 2,045 distinct survey positions the median change is 0.05 km (0.2%) and the largest is 62.4 km.
+:::
 
 ## Sediment Site Locations with Distances to Coast
 
