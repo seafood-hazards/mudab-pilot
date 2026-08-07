@@ -155,11 +155,11 @@ tribble(
   "vessel_code",             "TEXT",       "",   "",    TRUE,          "Vessel identifier code.",                                 "ICESCL_SHIPC",
   "platform_type",           "TEXT",       "",   "",    TRUE,          "Type of sampling platform.",                              "MUDABCL_PLATFORMTYPE",
   "vessel_name",             "TEXT",       "",   "",    TRUE,          "Name of the sampling vessel.",                            "",
-  "dist_to_coast",           "REAL",       "",   "",    TRUE,          "Distance from station to nearest coastline (km).",        "",
-  "est_country",             "TEXT",       "",   "",    TRUE,          "Estimated country derived from station coordinates.",     "",
-  "country_code",            "TEXT",       "",   "",    TRUE,          "ISO country code (e.g. DE).",                             "",
-  "municipality",            "TEXT",       "",   "",    TRUE,          "Municipality name.",                                      "",
-  "sea_name",                "TEXT",       "",   "",    TRUE,          "Name of the sea or ocean.",                               ""
+  "dist_to_coast",           "REAL",       "",   "",    TRUE,          "Distance to the nearest coastline (km), computed with seastamp.", "",
+  "est_country",             "TEXT",       "",   "",    TRUE,          "Nearest country (Natural Earth).",                        "",
+  "country_code",            "TEXT",       "",   "",    TRUE,          "ISO 3166-1 alpha-3 code of the nearest country (e.g. DEU).", "",
+  "municipality",            "TEXT",       "",   "",    TRUE,          "Nearest municipality (Eurostat GISCO LAU), Europe only.", "",
+  "sea_name",                "TEXT",       "",   "",    TRUE,          "Sea or ocean name (IHO Sea Areas v3).",                   ""
 )
 ```
 

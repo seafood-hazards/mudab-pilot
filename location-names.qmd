@@ -5,42 +5,65 @@ subtitle: "Estimation of location names from geographic coordinates"
 
 ## Overview
 
-A common challenge in oceanographic datasets is missing or inconsistent location metadata. While sediment core data usually come with coordinates (latitude and longitude), fields such as the **Nearest Country** and the **Nearest Municipality** are often left blank or recorded inconsistently.
+A common challenge in oceanographic datasets is missing or inconsistent location metadata. While sediment data usually come with coordinates (latitude and longitude), fields such as the **Nearest Country** and the **Nearest Municipality** are often left blank or recorded inconsistently.
 
-To ensure consistency across the dataset, we algorithmically estimated these fields based on the core's location. This page outlines the data sources and geospatial methods used to populate the `country`, `municipality`, and `sea_name` columns in the [survey](db-schema.qmd#survey) table.
+To ensure consistency across the dataset, these fields are estimated from the survey position. This page outlines the data sources and geospatial methods used to populate the `est_country`, `country_code`, `municipality` and `sea_name` columns in the [survey](db-schema.qmd#survey) table.
+
+All four are produced by [seastamp](https://github.com/AIQC-Hub/seastamp), the command line tool that annotates locations for every stage of the pipeline, so the pilot values agree with the ones the later generations carry.
 
 ::: {.callout-note}
 ### Note on Accuracy
-These values are **algorithmic estimates** based on geometric proximity. They may differ from historical logbooks or specific political definitions of maritime borders.
+These values are **algorithmic estimates** based on geometric proximity. They may differ from the reporting institute's own attribution or from specific political definitions of maritime borders.
+:::
+
+::: {.callout-important}
+The geospatial columns live on the **survey** table, not on `station`. MUDAB is the only pilot source where that is the case, so queries joining location to measurements go through `survey`.
 :::
 
 ## Nearest Country
 
-Since sediment cores are taken underwater, they do not technically belong "inside" a country's land border. To identify the associated nation, we used a **"Nearest Neighbor"** analysis.
+Since sediment samples are taken underwater, they do not technically belong "inside" a country's land border. To identify the associated nation, a **nearest neighbour** search is used: the distance from the survey position to every surrounding country polygon is measured, and the closest one wins.
 
-*   **Concept:** For every point in the ocean, we calculated the straight-line distance to the coastlines of all surrounding nations. The country with the shortest distance was assigned to the core.
-*   **Data Source:** We used the **Natural Earth** dataset (via the `rnaturalearth` R package). This provides a standardized, moderate-resolution map of global country boundaries suitable for identifying the nearest sovereign nation.
+*   **Data source:** **Natural Earth** 1:10m Admin 0 Countries, the most detailed of the three Natural Earth scales.
+*   **Columns:** `est_country` holds the country name, `country_code` its **ISO 3166-1 alpha-3** code (`DEU` for Germany).
 
 ## Nearest Municipality
 
-For higher-resolution analysis, identifying the country is not enough. We also estimated the **Nearest Municipality** (Local Administrative Unit) to provide granular context.
+For higher-resolution analysis, identifying the country is not enough, so the **nearest municipality** (Local Administrative Unit) is estimated the same way. This needs far more detailed geometry, since it has to include islands and complex coastal administrative borders.
 
-*   **Concept:** Similar to the country estimation, this uses a "Nearest Neighbor" approach but requires much more detailed maps that include islands and complex coastal administrative borders.
-*   **Data Source:** We utilized the **Eurostat GISCO** database (via the `giscoR` R package). This provides official administrative boundaries for European countries down to the municipal level (LAU - Local Administrative Units).
+*   **Data source:** the **Eurostat GISCO** LAU 2021 dataset, which gives official administrative boundaries for European countries down to municipality level.
+*   **Coverage:** Europe only. A position outside the GISCO extent gets no municipality.
 
-## Sea & Ocean Names
+## Sea and Ocean Names
 
-To determine which body of water a core was taken from (e.g., "Barents Sea" vs. "Norwegian Sea"), we used the **"Point-in-Polygon"** method. 
+To determine which body of water a sample was taken from, the position is matched against the official sea boundaries: a **point in polygon** test, falling back to the nearest polygon where a position sits slightly inland, which happens in the Wadden Sea and the estuaries at this map resolution.
 
-*   **Concept:** Imagine drawing official boundaries on a map. We simply check which boundary "box" each sediment core falls inside.
-*   **Data Source:** We utilized the **International Hydrographic Organization (IHO) Sea Areas v3**. This is the globally accepted standard for defining the limits of oceans and seas.
-*   **Method:** The specific boundaries were downloaded directly from the Marine Regions estimation service. If a core was located slightly "inland" due to map resolution issues (common in narrow fjords), it was assigned to the nearest adjacent sea body.
+*   **Data source:** the **International Hydrographic Organization (IHO) Sea Areas v3**, the globally accepted standard for the limits of oceans and seas.
 
+## Projection
+
+The three nearest-neighbour and point-in-polygon searches all run in a **Lambert Azimuthal Equal Area** projection centred on the data, with the extent derived from the sampling points themselves. Coordinates are rounded to three decimal places and de-duplicated first, so surveys repeated at one position are looked up once.
 
 ## Summary of Data Sources
 
-| Field | Estimation Method | Data Source | R Package / Tool |
+| Field | Estimation Method | Data Source | seastamp command |
 | :--- | :--- | :--- | :--- |
-| **Nearest Country** | Nearest Neighbor | Natural Earth | `rnaturalearth` |
-| **Municipality** | Nearest Neighbor | Eurostat GISCO | `giscoR` |
-| **Sea Name** | Spatial Join | IHO Sea Areas v3 | `sf` (Direct WFS) |
+| **Nearest Country** | Nearest neighbour | Natural Earth 1:10m Admin 0 | `place` |
+| **Country Code** | ISO 3166-1 alpha-3 | Natural Earth 1:10m Admin 0 | `place` |
+| **Municipality** | Nearest neighbour | Eurostat GISCO LAU 2021 | `place` |
+| **Sea Name** | Point in polygon | IHO Sea Areas v3 | `sea` |
+
+## What changed at v0.1.12
+
+These columns were previously estimated in R with `sf`, `rnaturalearth` and `giscoR`. Moving to seastamp changed all four across the 2,045 distinct survey positions:
+
+| Column | Change |
+| :--- | :--- |
+| `est_country` | 87 positions (4.3%) |
+| `country_code` | every row: the codes are now ISO alpha-3 (`DEU`) rather than alpha-2 (`DE`) |
+| `municipality` | 1,005 positions (49.1%) reassigned |
+| `sea_name` | 1,505 positions (73.6%) |
+
+The sea names are the substantial improvement. The earlier values resolved only to ocean basin level, so a German monitoring survey read `Arctic Ocean`, `Baltic Sea` or `North Atlantic Ocean`. They now resolve to fourteen IHO sea areas, including the two that actually matter for this programme, the North Sea and the Baltic:
+
+`Baltic Sea`, `Barentsz Sea`, `Celtic Sea`, `English Channel`, `Greenland Sea`, `Gulf of Bothnia`, `Gulf of Finland`, `Inner Seas off the West Coast of Scotland`, `Irish Sea and St. George's Channel`, `Kattegat`, `North Atlantic Ocean`, `North Sea`, `Norwegian Sea`, `Skagerrak`
