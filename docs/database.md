@@ -32,6 +32,20 @@ source where that is true, and it is why `distance-to-coast.qmd` and
 `location-names.qmd` join through `survey`. Coordinates appear on both tables:
 `station.latitude`/`longitude` and `survey.station_latitude`/`station_longitude`.
 
+## The geo columns
+
+`survey.dist_to_coast`, `est_country`, `country_code`, `municipality` and
+`sea_name` are computed by the external
+[seastamp](https://github.com/AIQC-Hub/seastamp) CLI (GSHHG full resolution,
+Natural Earth 1:10m, GISCO LAU 2021, IHO Sea Areas v3), run over the distinct
+survey positions in an LAEA projection derived from the points themselves. They
+are **not** in the raw MUDAB export.
+
+They were recomputed at site v0.1.12: before that they came from an `sf` /
+`rnaturalearth` / `giscoR` implementation, which resolved `sea_name` only to
+ocean basin level and emitted alpha-2 country codes. `distance-to-coast.qmd` and
+`location-names.qmd` document the method and the measured change.
+
 `sediment` has a nine-column primary key because MUDAB carries the analysis
 method, reference material, detection limit and measurement time as separate
 dimensions per measurement rather than as attributes of the sample.

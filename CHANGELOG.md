@@ -6,6 +6,14 @@ As this project is still in active development, it does not yet strictly adhere 
 
 ## [Unreleased]
 
+## [0.1.12] - 2026-08-07
+### Changed
+- **Geospatial columns recomputed with [seastamp](https://github.com/AIQC-Hub/seastamp)**, the tool the whole pipeline now uses, replacing the earlier `sf` / `rnaturalearth` / `giscoR` implementation. Across the 2,045 distinct survey positions: `dist_to_coast` moves by a median of 0.05 km (0.2%, largest 62.4 km), `municipality` is reassigned for 1,005, `sea_name` for 1,505, and `est_country` for 87
+- `sea_name` now resolves to 14 IHO sea areas instead of 3 ocean basins, so North Sea and Baltic surveys are distinguishable
+- `country_code` is now ISO 3166-1 alpha-3 (`DEU`) rather than alpha-2 (`DE`)
+- Distance Calculation and Estimation of Location Names pages rewritten for the seastamp method and data sources
+- Survey table schema describes the source and units of each geospatial column
+
 ## [0.1.11] - 2026-08-07
 ### Added
 - Pipeline Generations section on the home page (`_generations.qmd`), with links to the other four pilot sites and to the slim, clean, merged and refined generation sites
