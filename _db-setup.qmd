@@ -4,7 +4,7 @@ db = {
   const StratumSQLite = await window._stratumSQLite;
   return StratumSQLite.open(window._dbPath, {
     sqlJsPath: window._sqljsBase,
-    cacheKey:  "pilot-mudab@v0.1.4",
+    cacheKey:  "mudab-pilot@v0.1.11",
   });
 }
 

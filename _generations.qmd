@@ -1,0 +1,27 @@
+## Pipeline Generations
+
+The database on this site is the first of five generations. Each generation is
+built from the one before it, and each has its own site. Only the pilot
+generation is split per source, because that is the stage where the five data
+providers still look like five different databases.
+
+| # | Generation | What it adds | Site |
+|---|------------|--------------|------|
+| 1 | pilot   | one database per source, parsed from the provider's own export with as little interpretation as possible | this site, and the four below |
+| 2 | slim    | the shared seven-table schema, plus flags for quality, duplicates, detection limits and derived values | [multised-slim](https://seafood-hazards.github.io/multised-slim/) |
+| 3 | clean   | the flags applied: unusable rows removed, units and names harmonised, sites geo-enriched | [multised-clean](https://seafood-hazards.github.io/multised-clean/) |
+| 4 | merged  | all five sources in one database, with cross-source duplicates resolved | [multised-merged](https://seafood-hazards.github.io/multised-merged/) |
+| 5 | refined | a mart cut from the merged database for the pristine and background work | [multised-refined](https://seafood-hazards.github.io/multised-refined/) |
+
+### Pilot sites
+
+One site per data source, each documenting that provider's own schema and the
+corrections applied to it.
+
+| Source | Coverage | Site |
+|--------|----------|------|
+| Mareano   | Norway, IMR cruises                            | [mareano-pilot](https://seafood-hazards.github.io/mareano-pilot/) |
+| Vannmiljø | Norway                                         | [vannmiljo-pilot](https://seafood-hazards.github.io/vannmiljo-pilot/) |
+| ICES-DOME | International, rich sediment composition data  | [ices-dome-pilot](https://seafood-hazards.github.io/ices-dome-pilot/) |
+| MUDAB     | Germany                                        | this site |
+| 4Demon    | Belgium, Baltic and North Sea                  | [4demon-pilot](https://seafood-hazards.github.io/4demon-pilot/) |
