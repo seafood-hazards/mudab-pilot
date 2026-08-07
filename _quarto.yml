@@ -2,7 +2,7 @@ project:
   type: website
   pre-render: download_resources.R
   resources:
-    - pilot_mudab.sqlite
+    - mudab_pilot.sqlite
     - libs/sqljs/
   render:
     - "*.qmd"
@@ -25,8 +25,6 @@ website:
             href: db-schema.qmd
           - text: "Data Preparation"
             href: data-preparation.qmd
-          - text: "DB Schema (Slim)"
-            href: db-schema-slim.qmd
           - text: "Database Downloads"
             href: database-downloads.qmd
       - text: "Geospatial Analysis"
@@ -37,10 +35,8 @@ website:
             href: location-names.qmd
           - text: "Interactive Map"
             href: distance-interactive-map.qmd
-      - text: "Data Export"
+      - text: "EFSA Submission"
         menu:
-          - text: "Export to Tabular File"
-            href: data-export.qmd
           - text: "EFSA Format v1"
             href: efsa-format.qmd
           - text: "EFSA Submission v1"

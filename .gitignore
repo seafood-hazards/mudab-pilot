@@ -10,7 +10,6 @@
 /.idea
 
 *.sqlite
-/pilot_ices_dome.tsv.gz
 /libs/
 
 

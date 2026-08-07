@@ -1,6 +1,6 @@
 ---
 title: "Database Downloads"
-subtitle: Download links for the SQLite database files
+subtitle: Download link for the SQLite database file
 ---
 
 ```{css, echo=FALSE}
@@ -9,18 +9,19 @@ th {
 }
 ```
 
-Two versions of the SQLite database are published as assets on the same [GitHub release](https://github.com/seafood-hazards/mudab-pilot/releases/tag/v0.1.4): the full Mudab schema used by this site, and the slim, multi-source-friendly schema.
+The pilot database is published as an asset on this repository's [latest GitHub release](https://github.com/seafood-hazards/mudab-pilot/releases/latest). It is the only file this site depends on: every page queries it directly in the browser.
 
-## Available Databases
+## Available Database
 
 ```{r}
 library(tibble)
 
 database_tbl <- tribble(
-  ~Version, ~File,                     ~Schema,                                     ~Download,
-  "Full",   "pilot_mudab.sqlite",  "[DB Schema (Full)](./db-schema.qmd)",       "[Download](https://github.com/seafood-hazards/mudab-pilot/releases/download/v0.1.4/pilot_mudab.sqlite)",
-  "Slim",   "mudab_slim.sqlite",   "[DB Schema (Slim)](./db-schema-slim.qmd)",  "[Download](https://github.com/seafood-hazards/mudab-pilot/releases/download/v0.1.4/mudab_slim.sqlite)"
+  ~File,                  ~Schema,                                 ~Download,
+  "mudab_pilot.sqlite",   "[DB Schema (Full)](./db-schema.qmd)",   "[Download](https://github.com/seafood-hazards/mudab-pilot/releases/latest/download/mudab_pilot.sqlite)"
 )
 
 knitr::kable(database_tbl)
 ```
+
+The download link always resolves to the newest release, so it does not need updating when a new database version is published.
