@@ -79,11 +79,16 @@ After creating the ER (Entity–Relationship) diagram, the tables were implement
 
 ## Geospatial Analysis
 
-To facilitate efficient core and sample selection, distances to the nearest coastline were calculated for the MUDAB data. In addition, the nearest country and municipality, as well as the sea and ocean names, were identified based on the core locations.
+The pilot database reserves columns for the distance to the nearest coastline, the
+nearest country and municipality, and the sea or ocean name, but leaves them empty.
 
-- See the [Distance Calculation](./distance-to-coast.qmd) page for the methods and results of calculating the distance to the nearest coastline.
-- See the [Location Names](./location-names.qmd) page for the estimation of location names from geographic coordinates.
-- See the [Interactive Map](./distance-interactive-map.qmd) page for an interactive visualization of site locations with meta-information.
+They were derived here until August 2026, and the three pages that presented them
+have been retired along with the calculation. The reason is that they never reached
+any later stage: the clean generation recomputes all of them from the site
+coordinates and overwrites whatever the pilot held, so deriving them twice produced
+a second set of numbers that could only disagree with the ones that survive. The
+values now live on the [multised-clean](https://seafood-hazards.github.io/multised-clean/)
+site.
 
 ## EFSA Submission
 

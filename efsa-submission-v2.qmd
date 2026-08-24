@@ -11,6 +11,14 @@ th {
 
 The page presents the mapping between the pilot database fields (see the [DB Schema](db-schema.qmd) page) and the [EFSA Format v2](efsa-format-v2.qmd) columns.
 
+::: {.callout-note}
+The location columns this mapping draws on (`dist_to_coast`, the nearest country and
+its code, `municipality`, `sea_name`) are **reserved but empty** in the pilot
+database. The mapping below is the schema mapping, not a statement about coverage:
+the values are derived at the clean stage, which recomputes and overwrites them. See
+[DB Schema](./db-schema.qmd).
+:::
+
 ```{r}
 library(dplyr)
 library(tibble)
